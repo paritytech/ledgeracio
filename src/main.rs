@@ -30,6 +30,7 @@ enum OutputFormat {
 
 impl std::str::FromStr for OutputFormat {
     type Err = String;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "JSON" => Ok(Self::JSON),
@@ -73,9 +74,10 @@ pub struct ValidatorsStore<'a, T: Session> {
 #[derive(Encode)]
 pub struct Validators<'a, T: Session>(pub PhantomData<&'a Vec<<T as Session>::ValidatorId>>);
 impl<'a, T: Session> Store<T> for Validators<'a, T> {
-    const MODULE: &'static str = MODULE;
-    const FIELD: &'static str = "Validators";
     type Returns = Vec<<T as Session>::ValidatorId>;
+
+    const FIELD: &'static str = "Validators";
+    const MODULE: &'static str = MODULE;
 
     fn key(&self, metadata: &Metadata) -> Result<StorageKey, MetadataError> {
         Ok(metadata
@@ -94,12 +96,12 @@ pub struct CurrentIndexStore<'a, T: Session> {
     pub current_index: PhantomData<&'a T>,
 }
 
-/// True if the underlying economic identities or weighting behind the validators
-/// has changed in the queued validator set.
+/// True if the underlying economic identities or weighting behind the
+/// validators has changed in the queued validator set.
 #[derive(Encode, Store)]
 pub struct QueuedChanged<'a, T: Session> {
-    /// True if the underlying economic identities or weighting behind the validators
-    /// has changed in the queued validator set.
+    /// True if the underlying economic identities or weighting behind the
+    /// validators has changed in the queued validator set.
     #[store(returns = bool)]
     pub queue_changed: PhantomData<&'a T>,
 }
@@ -120,10 +122,10 @@ struct Ledgeracio {
     #[structopt(short = "n", long)]
     dry_run: bool,
     /// USB device to use.  Default is to probe for devices.
-	#[structopt(short, long)]
+    #[structopt(short, long)]
     device: Option<String>,
-    /// Interactive mode.  Not yet implemented.  This is the default if no options
-    /// are specified.
+    /// Interactive mode.  Not yet implemented.  This is the default if no
+    /// options are specified.
     #[structopt(short, long)]
     interactive: bool,
     /// Output format
@@ -132,60 +134,63 @@ struct Ledgeracio {
     /// RPC host
     #[structopt(short, long)]
     host: Option<String>,
-	/// Network.  Default is “Polkadot”.
-	#[structopt(long)]
-	network: Option<String>,
-	/// Subcommand
-	#[structopt(subcommand)]
-	cmd: Command,
+    /// Network.  Default is “Polkadot”.
+    #[structopt(long)]
+    network: Option<String>,
+    /// Subcommand
+    #[structopt(subcommand)]
+    cmd: Command,
 }
 
 #[derive(StructOpt, Debug)]
 enum Command {
-	/// Stash operations
-	Stash(Stash),
-	/// Validator operations
-	Validator(Validator),
+    /// Stash operations
+    Stash(Stash),
+    /// Validator operations
+    Validator(Validator),
 }
 
 #[derive(StructOpt, Debug)]
 enum Stash {
-	/// Show the specified stash controller
-	Show { index: u32 },
-	/// Show the status of all stash controllers
-	Status,
-	/// Claim a validation payout
-	Claim { index: Option<u32> },
-	/// Submit a new validator set
-	#[structopt(name = "submit-validator-set")]
-	SubmitValidatorSet,
-	/// Add a new controller key
-	#[structopt(name = "add-controller-key")]
-	AddControllerKey,
+    /// Show the specified stash controller
+    Show { index: u32 },
+    /// Show the status of all stash controllers
+    Status,
+    /// Claim a validation payout
+    Claim { index: Option<u32> },
+    /// Submit a new validator set
+    #[structopt(name = "submit-validator-set")]
+    SubmitValidatorSet,
+    /// Add a new controller key
+    #[structopt(name = "add-controller-key")]
+    AddControllerKey,
 }
 
 #[derive(StructOpt, Debug)]
-struct Count { count: u32 }
+struct Count {
+    count: u32,
+}
 
 #[derive(StructOpt, Debug)]
-struct ValidatorIndex { index: u32 }
+struct ValidatorIndex {
+    index: u32,
+}
 
 #[derive(StructOpt, Debug)]
 enum Validator {
-	/// Show status of all Validator Controller keys
-	Status { index: Option<u32> },
-	/// Announce intention to validate
-	Announce { index: u32 },
-	/// Replace a session key
-	ReplaceKey { index: u32 },
-	/// Generate new controller keys
-	GenerateKeys { count: u32 },
+    /// Show status of all Validator Controller keys
+    Status { index: Option<u32> },
+    /// Announce intention to validate
+    Announce { index: u32 },
+    /// Replace a session key
+    ReplaceKey { index: u32 },
+    /// Generate new controller keys
+    GenerateKeys { count: u32 },
 }
 
-
 impl Session for substrate_subxt::KusamaRuntime {
-    type ValidatorId = <Self as System>::AccountId;
     type SessionIndex = u32;
+    type ValidatorId = <Self as System>::AccountId;
 }
 
 #[async_std::main]
@@ -206,7 +211,7 @@ async fn main() {
         client
             .fetch::<Validators<substrate_subxt::KusamaRuntime>>(Validators(PhantomData), None)
             .await
-			.unwrap()
-			.unwrap()
+            .unwrap()
+            .unwrap()
     )
 }
