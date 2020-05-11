@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with substrate-subxt.  If not, see <http://www.gnu.org/licenses/>.
 // Copyright 2019-2020 Parity Technologies (UK) Ltd.
+use sp_runtime::Perbill;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -46,7 +47,7 @@ use frame_support::Parameter;
 use sp_core::storage::StorageKey;
 use sp_runtime::traits::{MaybeDisplay, MaybeSerialize, Member};
 use std::{fmt::Debug, marker::PhantomData};
-use substrate_subxt::{system::System, ClientBuilder, Metadata, MetadataError, Store};
+use substrate_subxt::{system::System, Call, ClientBuilder, Metadata, MetadataError, Store};
 use substrate_subxt_proc_macro::Store;
 
 /// The trait needed for this module.
@@ -129,14 +130,14 @@ struct Ledgeracio {
     #[structopt(short, long)]
     interactive: bool,
     /// Output format
-    #[structopt(short, long)]
-    format: Option<OutputFormat>,
+    #[structopt(short, long, default_value = "Text")]
+    format: OutputFormat,
     /// RPC host
-    #[structopt(short, long)]
-    host: Option<String>,
-    /// Network.  Default is “Polkadot”.
-    #[structopt(long)]
-    network: Option<String>,
+    #[structopt(short, long, default_value = "wss://kusama-rpc.polkadot.io")]
+    host: String,
+    /// Network
+    #[structopt(long, default_value = "Polkadot")]
+    network: String,
     /// Subcommand
     #[structopt(subcommand)]
     cmd: Command,
@@ -164,6 +165,43 @@ enum Stash {
     /// Add a new controller key
     #[structopt(name = "add-controller-key")]
     AddControllerKey,
+}
+
+/// Counter for the number of eras that have passed.
+pub type EraIndex = u32;
+
+/// Preference of what happens regarding validation.
+#[derive(PartialEq, Eq, Clone, Encode)]
+pub struct ValidatorPrefs {
+    /// Reward that validator takes up-front; only the rest is split between
+    /// themselves and nominators.
+    #[codec(compact)]
+    pub commission: Perbill,
+}
+
+impl Default for ValidatorPrefs {
+    fn default() -> Self {
+        ValidatorPrefs {
+            commission: Default::default(),
+        }
+    }
+}
+
+/// Claim a payout.
+#[derive(PartialEq, Eq, Clone, Encode)]
+struct PayoutStakersCall<'a, T: System> {
+    pub validator_stash: &'a T::AccountId,
+    pub era: EraIndex,
+}
+
+/// Claim a payout.
+struct ValidateCall<'a> {
+    pub validator_stash: &'a ValidatorPrefs,
+}
+
+impl<'a, T: System> Call<T> for PayoutStakersCall<'a, T> {
+    const FUNCTION: &'static str = "payout_stakers";
+    const MODULE: &'static str = "Staking";
 }
 
 #[derive(StructOpt, Debug)]
@@ -198,14 +236,7 @@ async fn main() {
     let args = Ledgeracio::from_args();
     println!("{:?}", args);
     let builder: ClientBuilder<substrate_subxt::KusamaRuntime> = ClientBuilder::new();
-    let client = builder
-        .set_url(
-            args.host
-                .unwrap_or("wss://kusama-rpc.polkadot.io".to_string()),
-        )
-        .build()
-        .await
-        .unwrap();
+    let client = builder.set_url(args.host).build().await.unwrap();
     println!(
         "Fetch result: {:#?}",
         client
