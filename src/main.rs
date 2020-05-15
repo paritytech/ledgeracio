@@ -61,57 +61,48 @@ pub trait Session: System {
 const MODULE: &str = "Session";
 
 /// The current set of validators.
-#[derive(Encode)]
-pub struct Validators<'a, T: Session>(pub PhantomData<&'a T>);
-impl<'a, T: Session> Store<T> for Validators<'a, T> {
-    type Returns = Vec<<T as Session>::ValidatorId>;
+#[derive(Encode, Store)]
+pub struct ValidatorsStore<T: Session> {
+    #[store(returns = Vec<<T as Session>::ValidatorId>)]
+    pub _runtime: PhantomData<T>,
+}
 
-    const FIELD: &'static str = "Validators";
-    const MODULE: &'static str = MODULE;
-
-    fn key(&self, metadata: &Metadata) -> Result<StorageKey, MetadataError> {
-        Ok(metadata
-            .module(Self::MODULE)?
-            .storage(Self::FIELD)?
-            .plain()?
-            .key())
+impl<T: Session> Default for ValidatorsStore<T> {
+    fn default() -> Self {
+        Self {
+            _runtime: PhantomData,
+        }
     }
 }
 
 /// Current index of the session.
-#[derive(Encode)]
-pub struct CurrentIndexStore<'a, T: Session>(pub PhantomData<&'a T>);
-impl<'a, T: Session> Store<T> for CurrentIndexStore<'a, T> {
-	type Returns = <T as Session>::SessionIndex;
+#[derive(Encode, Store)]
+pub struct CurrentIndexStore<T: Session> {
+    #[store(returns = <T as Session>::SessionIndex)]
+    pub _runtime: PhantomData<T>,
+}
 
-	const FIELD: &'static str = "CurrentIndex";
-	const MODULE: &'static str = MODULE;
-
-    fn key(&self, metadata: &Metadata) -> Result<StorageKey, MetadataError> {
-        Ok(metadata
-            .module(Self::MODULE)?
-            .storage(Self::FIELD)?
-            .plain()?
-            .key())
+impl<T: Session> Default for CurrentIndexStore<T> {
+    fn default() -> Self {
+        Self {
+            _runtime: PhantomData,
+        }
     }
 }
 
 /// True if the underlying economic identities or weighting behind the
 /// validators has changed in the queued validator set.
-#[derive(Encode)]
-pub struct QueuedChangedStore<'a, T: Session>(pub PhantomData<&'a T>);
-impl<'a, T: Session> Store<T> for QueuedChangedStore<'a, T> {
-	type Returns = bool;
+#[derive(Encode, Store)]
+pub struct QueuedChangedStore<T: Session> {
+    #[store(returns = bool)]
+    pub _runtime: PhantomData<T>,
+}
 
-	const FIELD: &'static str = "QueueChangedStore";
-	const MODULE: &'static str = MODULE;
-
-    fn key(&self, metadata: &Metadata) -> Result<StorageKey, MetadataError> {
-        Ok(metadata
-            .module(Self::MODULE)?
-            .storage(Self::FIELD)?
-            .plain()?
-            .key())
+impl<T: Session> Default for QueuedChangedStore<T> {
+    fn default() -> Self {
+        Self {
+            _runtime: PhantomData,
+        }
     }
 }
 
@@ -246,13 +237,17 @@ async fn main() {
     let builder: ClientBuilder<substrate_subxt::KusamaRuntime> = ClientBuilder::new();
     let client = builder.set_url(args.host).build().await.unwrap();
     println!(
-        "Validator set: {:#?}\nCurrent index: {:#?}",
+        "Validator set: {:#?}\nCurrent index: {}\nChange queued: {}",
         client
-            .fetch::<Validators<substrate_subxt::KusamaRuntime>>(Validators(PhantomData), None)
+            .fetch(<ValidatorsStore<_> as Default>::default(), None)
             .await
             .unwrap(),
         client
-            .fetch::<CurrentIndexStore<substrate_subxt::KusamaRuntime>>(CurrentIndexStore(PhantomData), None)
+            .fetch(<CurrentIndexStore<_> as Default>::default(), None)
+            .await
+            .unwrap(),
+        client
+            .fetch(<QueuedChangedStore<_> as Default>::default(), None)
             .await
             .unwrap()
     )
