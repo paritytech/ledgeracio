@@ -48,7 +48,6 @@ use sp_core::storage::StorageKey;
 use sp_runtime::traits::{MaybeDisplay, MaybeSerialize, Member};
 use std::{fmt::Debug, marker::PhantomData};
 use substrate_subxt::{system::System, Call, ClientBuilder, Metadata, MetadataError, Store};
-use substrate_subxt_proc_macro::Store;
 
 /// The trait needed for this module.
 pub trait Session: System {
@@ -62,18 +61,8 @@ pub trait Session: System {
 const MODULE: &str = "Session";
 
 /// The current set of validators.
-#[derive(Encode, Store)]
-#[cfg(feature = "broken-proc-macro")]
-pub struct ValidatorsStore<'a, T: Session> {
-    /// The current set of validators.
-    #[store(returns = Vec<<T as Session>::ValidatorId>)]
-    pub account_id: PhantomData<&'a Vec<<T as Session>::ValidatorId>>,
-}
-
-/// The current set of validators.
-#[cfg(not(feature = "broken-proc-macro"))]
 #[derive(Encode)]
-pub struct Validators<'a, T: Session>(pub PhantomData<&'a Vec<<T as Session>::ValidatorId>>);
+pub struct Validators<'a, T: Session>(pub PhantomData<&'a T>);
 impl<'a, T: Session> Store<T> for Validators<'a, T> {
     type Returns = Vec<<T as Session>::ValidatorId>;
 
@@ -90,21 +79,40 @@ impl<'a, T: Session> Store<T> for Validators<'a, T> {
 }
 
 /// Current index of the session.
-#[derive(Encode, Store)]
-pub struct CurrentIndexStore<'a, T: Session> {
-    /// Current index of the session.
-    #[store(returns = <T as Session>::SessionIndex)]
-    pub current_index: PhantomData<&'a T>,
+#[derive(Encode)]
+pub struct CurrentIndexStore<'a, T: Session>(pub PhantomData<&'a T>);
+impl<'a, T: Session> Store<T> for CurrentIndexStore<'a, T> {
+	type Returns = <T as Session>::SessionIndex;
+
+	const FIELD: &'static str = "CurrentIndex";
+	const MODULE: &'static str = MODULE;
+
+    fn key(&self, metadata: &Metadata) -> Result<StorageKey, MetadataError> {
+        Ok(metadata
+            .module(Self::MODULE)?
+            .storage(Self::FIELD)?
+            .plain()?
+            .key())
+    }
 }
 
 /// True if the underlying economic identities or weighting behind the
 /// validators has changed in the queued validator set.
-#[derive(Encode, Store)]
-pub struct QueuedChanged<'a, T: Session> {
-    /// True if the underlying economic identities or weighting behind the
-    /// validators has changed in the queued validator set.
-    #[store(returns = bool)]
-    pub queue_changed: PhantomData<&'a T>,
+#[derive(Encode)]
+pub struct QueuedChangedStore<'a, T: Session>(pub PhantomData<&'a T>);
+impl<'a, T: Session> Store<T> for QueuedChangedStore<'a, T> {
+	type Returns = bool;
+
+	const FIELD: &'static str = "QueueChangedStore";
+	const MODULE: &'static str = MODULE;
+
+    fn key(&self, metadata: &Metadata) -> Result<StorageKey, MetadataError> {
+        Ok(metadata
+            .module(Self::MODULE)?
+            .storage(Self::FIELD)?
+            .plain()?
+            .key())
+    }
 }
 
 #[derive(Debug, StructOpt)]
@@ -238,11 +246,14 @@ async fn main() {
     let builder: ClientBuilder<substrate_subxt::KusamaRuntime> = ClientBuilder::new();
     let client = builder.set_url(args.host).build().await.unwrap();
     println!(
-        "Fetch result: {:#?}",
+        "Validator set: {:#?}\nCurrent index: {:#?}",
         client
             .fetch::<Validators<substrate_subxt::KusamaRuntime>>(Validators(PhantomData), None)
             .await
-            .unwrap()
+            .unwrap(),
+        client
+            .fetch::<CurrentIndexStore<substrate_subxt::KusamaRuntime>>(CurrentIndexStore(PhantomData), None)
+            .await
             .unwrap()
     )
 }
