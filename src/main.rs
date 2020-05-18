@@ -64,10 +64,6 @@ struct Ledgeracio {
     /// USB device to use.  Default is to probe for devices.
     #[structopt(short, long)]
     device: Option<String>,
-    /// Interactive mode.  Not yet implemented.  This is the default if no
-    /// options are specified.
-    #[structopt(short, long)]
-    interactive: bool,
     /// Output format
     #[structopt(short, long, default_value = "Text")]
     format: OutputFormat,
