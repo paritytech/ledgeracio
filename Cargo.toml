@@ -6,9 +6,8 @@ edition = "2018"
 license = "GPLv3+"
 
 [dependencies]
-substrate-subxt = { git = "git+ssh://github.com/paritytech/substrate-subxt" }
+substrate-subxt = { git = "ssh://github.com/paritytech/substrate-subxt", branch = "staking" }
 structopt = "0.3.14"
-substrate-subxt-proc-macro = { git = "git+ssh://github.com/paritytech/substrate-subxt" }
 sp-core = "2.0.0-alpha.7"
 codec = { package = "parity-scale-codec", version = "1.3.0" }
 sp-runtime = "2.0.0-alpha.7"

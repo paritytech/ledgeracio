@@ -17,6 +17,9 @@
 use sp_runtime::Perbill;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use substrate_subxt::session::{CurrentIndexStore, QueuedChangedStore, Session, ValidatorsStore};
+use substrate_subxt::KusamaRuntime;
+mod mock;
 
 /// Output format
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -49,75 +52,12 @@ use sp_runtime::traits::{MaybeDisplay, MaybeSerialize, Member};
 use std::{fmt::Debug, marker::PhantomData};
 use substrate_subxt::{system::System, Call, ClientBuilder, Metadata, MetadataError, Store};
 
-/// The trait needed for this module.
-pub trait Session: System {
-    /// The validator account identifier type for the runtime.
-    type ValidatorId: Parameter + Member + MaybeSerialize + Debug + MaybeDisplay + Ord + Default;
-
-    /// The validator account identifier type for the runtime.
-    type SessionIndex: Parameter + Member + MaybeSerialize + Debug + MaybeDisplay + Ord + Default;
-}
-
-const MODULE: &str = "Session";
-
-/// The current set of validators.
-#[derive(Encode, Store)]
-pub struct ValidatorsStore<T: Session> {
-    #[store(returns = Vec<<T as Session>::ValidatorId>)]
-    pub _runtime: PhantomData<T>,
-}
-
-impl<T: Session> Default for ValidatorsStore<T> {
-    fn default() -> Self {
-        Self {
-            _runtime: PhantomData,
-        }
-    }
-}
-
-/// Current index of the session.
-#[derive(Encode, Store)]
-pub struct CurrentIndexStore<T: Session> {
-    #[store(returns = <T as Session>::SessionIndex)]
-    pub _runtime: PhantomData<T>,
-}
-
-impl<T: Session> Default for CurrentIndexStore<T> {
-    fn default() -> Self {
-        Self {
-            _runtime: PhantomData,
-        }
-    }
-}
-
-/// True if the underlying economic identities or weighting behind the
-/// validators has changed in the queued validator set.
-#[derive(Encode, Store)]
-pub struct QueuedChangedStore<T: Session> {
-    #[store(returns = bool)]
-    pub _runtime: PhantomData<T>,
-}
-
-impl<T: Session> Default for QueuedChangedStore<T> {
-    fn default() -> Self {
-        Self {
-            _runtime: PhantomData,
-        }
-    }
-}
-
 #[derive(Debug, StructOpt)]
 #[structopt(name = "Ledgeracio", about = "Ledger CLI for staking")]
 struct Ledgeracio {
     /// Enable verbose output
     #[structopt(short, long)]
     verbose: bool,
-    /// File containing the PIN. Default is to prompt interactively for the PIN.
-    ///
-    /// If standard input is not a PTY, operations that require a PIN will error
-    /// out if this option is not passed.
-    #[structopt(short, long, parse(from_os_str))]
-    pin_file: Option<PathBuf>,
     /// Dry run.  Do not execute the operation.
     #[structopt(short = "n", long)]
     dry_run: bool,
@@ -166,53 +106,6 @@ enum Stash {
     AddControllerKey,
 }
 
-/// Counter for the number of eras that have passed.
-pub type EraIndex = u32;
-
-/// Preference of what happens regarding validation.
-#[derive(PartialEq, Eq, Clone, Encode)]
-pub struct ValidatorPrefs {
-    /// Reward that validator takes up-front; only the rest is split between
-    /// themselves and nominators.
-    #[codec(compact)]
-    pub commission: Perbill,
-}
-
-impl Default for ValidatorPrefs {
-    fn default() -> Self {
-        ValidatorPrefs {
-            commission: Default::default(),
-        }
-    }
-}
-
-/// Claim a payout.
-#[derive(PartialEq, Eq, Clone, Encode)]
-struct PayoutStakersCall<'a, T: System> {
-    pub validator_stash: &'a T::AccountId,
-    pub era: EraIndex,
-}
-
-/// Claim a payout.
-struct ValidateCall<'a> {
-    pub validator_stash: &'a ValidatorPrefs,
-}
-
-impl<'a, T: System> Call<T> for PayoutStakersCall<'a, T> {
-    const FUNCTION: &'static str = "payout_stakers";
-    const MODULE: &'static str = "Staking";
-}
-
-#[derive(StructOpt, Debug)]
-struct Count {
-    count: u32,
-}
-
-#[derive(StructOpt, Debug)]
-struct ValidatorIndex {
-    index: u32,
-}
-
 #[derive(StructOpt, Debug)]
 enum Validator {
     /// Show status of all Validator Controller keys
@@ -225,30 +118,22 @@ enum Validator {
     GenerateKeys { count: u32 },
 }
 
-impl Session for substrate_subxt::KusamaRuntime {
-    type SessionIndex = u32;
-    type ValidatorId = <Self as System>::AccountId;
-}
-
 #[async_std::main]
 async fn main() {
+    let validators = ValidatorsStore::<KusamaRuntime> {
+        _runtime: PhantomData,
+    };
+    let current_index = CurrentIndexStore::<KusamaRuntime> { _r: PhantomData };
+    let queued_change = QueuedChangedStore::<KusamaRuntime> { _r: PhantomData };
     let args = Ledgeracio::from_args();
     println!("{:?}", args);
     let builder: ClientBuilder<substrate_subxt::KusamaRuntime> = ClientBuilder::new();
     let client = builder.set_url(args.host).build().await.unwrap();
     println!(
-        "Validator set: {:#?}\nCurrent index: {}\nChange queued: {}",
-        client
-            .fetch(<ValidatorsStore<_> as Default>::default(), None)
-            .await
-            .unwrap(),
-        client
-            .fetch(<CurrentIndexStore<_> as Default>::default(), None)
-            .await
-            .unwrap(),
-        client
-            .fetch(<QueuedChangedStore<_> as Default>::default(), None)
-            .await
-            .unwrap()
+        "Validator set: {:#?}\nCurrent index: {}\nChange queued: {}\nMock validators: {:#?}",
+        client.fetch(validators, None).await.unwrap(),
+        client.fetch(current_index, None).await.unwrap(),
+        client.fetch(queued_change, None).await.unwrap(),
+		mock::validator_list(),
     )
 }
