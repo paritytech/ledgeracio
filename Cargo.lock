@@ -1555,18 +1555,18 @@ checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
 name = "pin-project"
-version = "0.4.16"
+version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81d480cb4e89522ccda96d0eed9af94180b7a5f93fb28f66e1fd7d68431663d1"
+checksum = "edc93aeee735e60ecb40cf740eb319ff23eab1c5748abfdb5c180e4ce49f7791"
 dependencies = [
  "pin-project-internal",
 ]
 
 [[package]]
 name = "pin-project-internal"
-version = "0.4.16"
+version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a82996f11efccb19b685b14b5df818de31c1edcee3daa256ab5775dd98e72feb"
+checksum = "e58db2081ba5b4c93bd6be09c40fd36cb9193a8336c384f3b40012e531aa7e40"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1681,9 +1681,9 @@ checksum = "8e86d370532557ae7573551a1ec8235a0f8d6cb276c7c9e6aa490b511c447485"
 
 [[package]]
 name = "quote"
-version = "1.0.5"
+version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42934bc9c8ab0d3b273a16d8551c8f0fcff46be73276ca083ec2414c15c4ba5e"
+checksum = "54a21852a652ad6f610c9510194f398ff6f8692e334fd1145fed931f7fbe44ea"
 dependencies = [
  "proc-macro2",
 ]
@@ -2424,7 +2424,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt"
 version = "0.7.0"
-source = "git+ssh://github.com/paritytech/substrate-subxt?branch=staking#ffbffd44eb663034ff2f9a4bae31fcdcb8013f0f"
+source = "git+ssh://github.com/paritytech/substrate-subxt?branch=staking#aaf190e1b9dfa858516079cab2b6d34139b4c12d"
 dependencies = [
  "frame-metadata",
  "frame-support",
@@ -2451,7 +2451,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt-proc-macro"
 version = "0.7.0"
-source = "git+ssh://github.com/paritytech/substrate-subxt?branch=staking#ffbffd44eb663034ff2f9a4bae31fcdcb8013f0f"
+source = "git+ssh://github.com/paritytech/substrate-subxt?branch=staking#aaf190e1b9dfa858516079cab2b6d34139b4c12d"
 dependencies = [
  "heck",
  "proc-macro-crate",
