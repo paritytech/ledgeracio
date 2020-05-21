@@ -14,12 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with substrate-subxt.  If not, see <http://www.gnu.org/licenses/>.
 // Copyright 2019-2020 Parity Technologies (UK) Ltd.
+
+//! The main binary of Ledgeracio
+
 use sp_runtime::Perbill;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use substrate_subxt::session::{CurrentIndexStore, QueuedChangedStore, Session, ValidatorsStore};
 use substrate_subxt::KusamaRuntime;
 mod mock;
+mod validator;
 
 /// Output format
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -83,7 +87,7 @@ enum Command {
     /// Stash operations
     Stash(Stash),
     /// Validator operations
-    Validator(Validator),
+    Validator(validator::Validator),
 }
 
 #[derive(StructOpt, Debug)]
@@ -100,18 +104,6 @@ enum Stash {
     /// Add a new controller key
     #[structopt(name = "add-controller-key")]
     AddControllerKey,
-}
-
-#[derive(StructOpt, Debug)]
-enum Validator {
-    /// Show status of all Validator Controller keys
-    Status { index: Option<u32> },
-    /// Announce intention to validate
-    Announce { index: u32 },
-    /// Replace a session key
-    ReplaceKey { index: u32 },
-    /// Generate new controller keys
-    GenerateKeys { count: u32 },
 }
 
 #[async_std::main]
