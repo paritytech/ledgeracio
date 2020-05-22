@@ -16,5 +16,4 @@
 
 //! Mock interfaces for test purposes
 
-use sp_core::crypto::AccountId32;
-pub fn validator_list() -> Vec<AccountId32> { vec![] }
+pub fn validator_list() -> Vec<crate::AccountId> { vec![] }

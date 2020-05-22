@@ -1,29 +1,32 @@
-// Copyright 2019-2020 Parity Technologies (UK) Ltd.
-// This file is part of substrate-subxt.
+// Copyright 2020 Parity Technologies (UK) Ltd.
+// This file is part of ledgeracio.
 //
-// subxt is free software: you can redistribute it and/or modify
+// ledgeracio is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// subxt is distributed in the hope that it will be useful,
+// ledgeracio is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with substrate-subxt.  If not, see <http://www.gnu.org/licenses/>.
-// Copyright 2019-2020 Parity Technologies (UK) Ltd.
+// along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
 //! The main binary of Ledgeracio
 
-use sp_runtime::Perbill;
-use std::path::PathBuf;
-use structopt::StructOpt;
-use substrate_subxt::session::{CurrentIndexStore, QueuedChangedStore, Session, ValidatorsStore};
-use substrate_subxt::KusamaRuntime;
+mod keys;
 mod mock;
+mod stash;
 mod validator;
+mod softstore;
+
+use sp_core::{crypto::AccountId32 as AccountId, ed25519::Pair};
+use std::fmt::Debug;
+use structopt::StructOpt;
+use substrate_subxt::{sp_core, ClientBuilder};
+use keys::KeyStore;
 
 /// Output format
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -49,28 +52,12 @@ impl std::str::FromStr for OutputFormat {
     }
 }
 
-use codec::Encode;
-use frame_support::Parameter;
-use sp_core::storage::StorageKey;
-use sp_runtime::traits::{MaybeDisplay, MaybeSerialize, Member};
-use std::{fmt::Debug, marker::PhantomData};
-use substrate_subxt::{system::System, Call, ClientBuilder, Metadata, MetadataError, Store};
-
 #[derive(Debug, StructOpt)]
 #[structopt(name = "Ledgeracio", about = "Ledger CLI for staking")]
 struct Ledgeracio {
-    /// Enable verbose output
-    #[structopt(short, long)]
-    verbose: bool,
     /// Dry run.  Do not execute the operation.
     #[structopt(short = "n", long)]
     dry_run: bool,
-    /// USB device to use.  Default is to probe for devices.
-    #[structopt(short, long)]
-    device: Option<String>,
-    /// Output format
-    #[structopt(short, long, default_value = "Text")]
-    format: OutputFormat,
     /// RPC host
     #[structopt(short, long, default_value = "wss://kusama-rpc.polkadot.io")]
     host: String,
@@ -85,43 +72,32 @@ struct Ledgeracio {
 #[derive(StructOpt, Debug)]
 enum Command {
     /// Stash operations
-    Stash(Stash),
+    Stash(stash::Stash),
     /// Validator operations
     Validator(validator::Validator),
 }
 
-#[derive(StructOpt, Debug)]
-enum Stash {
-    /// Show the specified stash controller
-    Show { index: u32 },
-    /// Show the status of all stash controllers
-    Status,
-    /// Claim a validation payout
-    Claim { index: Option<u32> },
-    /// Submit a new validator set
-    #[structopt(name = "submit-validator-set")]
-    SubmitValidatorSet,
-    /// Add a new controller key
-    #[structopt(name = "add-controller-key")]
-    AddControllerKey,
-}
-
 #[async_std::main]
-async fn main() {
-    let validators = ValidatorsStore::<KusamaRuntime> {
-        _runtime: PhantomData,
+async fn main() -> Result<(), substrate_subxt::Error> {
+    let Ledgeracio {
+        dry_run,
+        host,
+        network,
+        cmd,
+    } = Ledgeracio::from_args();
+    let client = ClientBuilder::<substrate_subxt::KusamaRuntime>::new()
+        .set_url(host)
+        .build()
+        .await?;
+    let extrinsic = match cmd {
+        Command::Stash(s) => stash::main(s),
+        Command::Validator(v) => validator::main(v, &client),
     };
-    let current_index = CurrentIndexStore::<KusamaRuntime> { _r: PhantomData };
-    let queued_change = QueuedChangedStore::<KusamaRuntime> { _r: PhantomData };
-    let args = Ledgeracio::from_args();
-    println!("{:?}", args);
-    let builder: ClientBuilder<substrate_subxt::KusamaRuntime> = ClientBuilder::new();
-    let client = builder.set_url(args.host).build().await.unwrap();
-    println!(
-        "Validator set: {:#?}\nCurrent index: {}\nChange queued: {}\nMock validators: {:#?}",
-        client.fetch(validators, None).await.unwrap(),
-        client.fetch(current_index, None).await.unwrap(),
-        client.fetch(queued_change, None).await.unwrap(),
-		mock::validator_list(),
-    )
+    if dry_run {
+        println!("Transaction to be submitted: {:?}", extrinsic)
+    } else {
+        let hash = client.submit_extrinsic(extrinsic).await?;
+        println!("Transaction hash: {:?}", hash)
+    }
+    Ok(())
 }
