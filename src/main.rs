@@ -18,15 +18,16 @@
 
 mod keys;
 mod mock;
+mod softstore;
 mod stash;
 mod validator;
-mod softstore;
 
-use sp_core::{crypto::AccountId32 as AccountId, ed25519::Pair};
+use codec::Encode;
+use softstore::SoftKeyStore;
+use sp_core::crypto::AccountId32 as AccountId;
 use std::fmt::Debug;
 use structopt::StructOpt;
 use substrate_subxt::{sp_core, ClientBuilder};
-use keys::KeyStore;
 
 /// Output format
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -82,19 +83,20 @@ async fn main() -> Result<(), substrate_subxt::Error> {
     let Ledgeracio {
         dry_run,
         host,
-        network,
+        network: _,
         cmd,
     } = Ledgeracio::from_args();
     let client = ClientBuilder::<substrate_subxt::KusamaRuntime>::new()
         .set_url(host)
         .build()
         .await?;
+    let keystore = SoftKeyStore;
     let extrinsic = match cmd {
-        Command::Stash(s) => stash::main(s),
-        Command::Validator(v) => validator::main(v, &client),
-    };
+        Command::Stash(s) => stash::main(s, &client, &keystore).await,
+        Command::Validator(v) => validator::main(v, &client, &keystore).await,
+    }?;
     if dry_run {
-        println!("Transaction to be submitted: {:?}", extrinsic)
+        println!("Transaction to be submitted: {:?}", extrinsic.encode())
     } else {
         let hash = client.submit_extrinsic(extrinsic).await?;
         println!("Transaction hash: {:?}", hash)

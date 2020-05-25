@@ -16,15 +16,24 @@
 
 //! A software keystore.
 
+use super::{keys::KeyStore, AccountId};
+use async_std::prelude::*;
+
 /// This is meant for development and testing, and should not be used in
 /// production.  Hardware-backed keystores should be used in production.
 pub struct SoftKeyStore;
 
 impl KeyStore for SoftKeyStore {
-    fn get(&self, index: usize) -> Option<AccountId> {
+    fn get(
+        &self,
+        _index: usize,
+    ) -> Box<dyn Future<Output = Result<Option<AccountId>, String>> + Unpin> {
         unimplemented!("BIP 32 Derivation")
     }
-    fn sign(&self, message: &[u8]) -> Box<dyn Future<Output = Result<(Vec<u8>, Vec<u8>), String>>> {
+    fn sign(
+        &self,
+        _message: &[u8],
+    ) -> Box<dyn Future<Output = Result<(Vec<u8>, Vec<u8>), String>> + Unpin> {
         unimplemented!("Signing")
     }
 }

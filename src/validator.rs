@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::StructOpt;
+use super::{AccountId, StructOpt};
 use std::marker::PhantomData;
 use substrate_subxt::{
     balances::Balances,
-    sp_runtime::{traits::SignedExtension, Perbill},
+    sp_runtime::{generic::SignedPayload, traits::SignedExtension, Perbill},
     staking::{Staking, ValidateCall, ValidatorPrefs},
     system::System,
-    Client, SignedExtra,
+    Client, Encoded, Error, SignedExtra,
 };
 
 #[derive(StructOpt, Debug)]
@@ -29,7 +29,7 @@ pub(crate) enum Validator {
     /// Show status of all Validator Controller keys
     Status { index: Option<u32> },
     /// Announce intention to validate
-    Announce { index: u32, commission: Perbill },
+    Announce { index: u32, commission: u32 },
     /// Replace a session key
     ReplaceKey { index: u32 },
     /// Generate new controller keys
@@ -37,25 +37,25 @@ pub(crate) enum Validator {
 }
 
 pub(crate) async fn main<
-    T: System + Balances + Send + Sync + Staking + 'static,
+    T: System<AccountId = AccountId> + Balances + Send + Sync + Staking + 'static,
     S: 'static,
     E: SignedExtension + SignedExtra<T> + 'static,
 >(
     cmd: Validator,
     client: &Client<T, S, E>,
-	keystore: &dyn crate::keys::KeyStore,
-) -> Vec<u8> {
+    keystore: &dyn crate::keys::KeyStore,
+) -> Result<SignedPayload<Encoded, E::Extra>, Error> {
     match cmd {
         Validator::Announce { index, commission } => {
             let call = ValidateCall {
-                prefs: ValidatorPrefs { commission },
+                prefs: ValidatorPrefs { commission: Perbill::from_parts(commission) },
                 _runtime: PhantomData,
             };
-			let account_id = keystore.get(index as _).unwrap();
-            client.create_raw_payload(account_id, call).await
+            let account_id = keystore.get(index as _).await.unwrap().unwrap();
+            client.create_raw_payload(&account_id, call).await
         }
-		Validator::ReplaceKey { index } => unimplemented!("replacing key {}", index),
-		Validator::GenerateKeys { count } => unimplemented!("deriving a new key {}", count),
-		Validator::Status { index } => unimplemented!("showing the status of key {}", index),
+        Validator::ReplaceKey { index } => unimplemented!("replacing key {}", index),
+        Validator::GenerateKeys { count } => unimplemented!("deriving a new key {}", count),
+        Validator::Status { index } => unimplemented!("showing the status of key {:?}", index),
     }
 }
