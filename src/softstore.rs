@@ -16,25 +16,63 @@
 
 //! A software keystore.
 
-use super::{keys::KeyStore, AccountId, Error};
+use super::{AccountId, AccountType, Error, KeyStore};
 use async_std::prelude::*;
+use ed25519_bip32::{DerivationScheme::V2, XPrv};
+use std::pin::Pin;
+const HARDENED: u32 = 1u32 << 31;
 
 /// This is meant for development and testing, and should not be used in
 /// production.  Hardware-backed keystores should be used in production.
-pub struct SoftKeyStore;
+pub struct SoftKeyStore(XPrv);
+
+impl SoftKeyStore {
+    pub fn new(bytes: &[u8; 32], account_type: AccountType, chain_code: &[u8; 32]) -> Self {
+        Self(
+            XPrv::from_nonextended_force(bytes, chain_code)
+                .derive(V2, 0x8000002Cu32)
+                .derive(V2, 0x80000162u32)
+                .derive(V2, account_type as u32 | 1u32 << 31)
+                .derive(V2, 0),
+        )
+    }
+}
 
 impl KeyStore for SoftKeyStore {
-    fn get(
-        &self,
-        _index: usize,
-    ) -> Box<dyn Future<Output = Result<Option<AccountId>, Error>> + Unpin> {
-        unimplemented!("BIP 32 Derivation")
+    fn get(&self, index: usize) -> Pin<Box<dyn Future<Output = Result<Option<AccountId>, Error>>>> {
+        Box::pin(async_std::future::ready(if index >= HARDENED as usize {
+            Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("Invalid index {}", index),
+            )) as Box<dyn std::error::Error>)
+        } else {
+            Ok(Some(
+                self.0
+                    .derive(V2, index as u32 | 1u32 << 31)
+                    .public()
+                    .public_key()
+                    .into(),
+            ))
+        }))
     }
 
     fn sign(
         &self,
-        _message: &[u8],
-    ) -> Box<dyn Future<Output = Result<(Vec<u8>, Vec<u8>), Error>> + Unpin> {
-        unimplemented!("Signing")
+        index: u32,
+        message: &[u8],
+    ) -> Pin<Box<dyn Future<Output = Result<[u8; 64], Error>>>> {
+        if index >= 1u32 << 31 as usize {
+            Box::pin(async_std::future::ready(Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("Invalid index {}", index),
+            ))
+                as Box<dyn std::error::Error>)))
+        } else {
+            Box::pin(async_std::future::ready(Ok(*self
+                .0
+                .derive(V2, index as u32 | 1u32 << 31)
+                .sign::<()>(message)
+                .to_bytes())))
+        }
     }
 }

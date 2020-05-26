@@ -19,15 +19,21 @@
 //! Performance should not be considered critical.
 
 use crate::{AccountId, Error};
-use std::future::Future;
+use std::{future::Future, pin::Pin};
+
+/// The account type
+#[repr(u8)]
+pub enum AccountType {
+    /// Stash accounts
+    Stash = 0,
+    /// Validator accounts
+    Validator = 1,
+}
 
 /// A keystore, backed by software or hardware.
 pub trait KeyStore {
     /// The public keys, as account IDs.
-    fn get(
-        &self,
-        index: usize,
-    ) -> Box<dyn Future<Output = Result<Option<AccountId>, Error>> + Unpin>;
+    fn get(&self, index: usize) -> Pin<Box<dyn Future<Output = Result<Option<AccountId>, Error>>>>;
     /// Sign the given message asynchronously.
     ///
     /// This may fail for several reasons, including the operation being refused
@@ -36,6 +42,7 @@ pub trait KeyStore {
     /// The returned error code is meant for human consumption.
     fn sign(
         &self,
+        index: u32,
         message: &[u8],
-    ) -> Box<dyn Future<Output = Result<(Vec<u8>, Vec<u8>), Error>> + Unpin>;
+    ) -> Pin<Box<dyn Future<Output = Result<[u8; 64], Error>>>>;
 }

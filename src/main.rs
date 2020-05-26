@@ -23,6 +23,7 @@ mod stash;
 mod validator;
 
 use codec::Encode;
+use keys::{AccountType, KeyStore};
 use softstore::SoftKeyStore;
 use sp_core::crypto::AccountId32 as AccountId;
 use std::fmt::Debug;
@@ -92,7 +93,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .set_url(host)
         .build()
         .await?;
-    let keystore = SoftKeyStore;
+    let keystore = SoftKeyStore::new(
+        &[0; 32],
+        match cmd {
+            Command::Stash(_) => AccountType::Stash,
+            Command::Validator(_) => AccountType::Validator,
+        },
+        &[0; 32],
+    );
     let extrinsic = match cmd {
         Command::Stash(s) => stash::main(s, &client, &keystore).await,
         Command::Validator(v) => validator::main(v, &client, &keystore).await,
