@@ -16,14 +16,12 @@
 
 //! Stash commands
 
-use super::{AccountId, StructOpt};
-use substrate_subxt::{
-    balances::Balances,
-    sp_runtime::{generic::SignedPayload, traits::SignedExtension},
-    system::System,
-	staking::Staking,
-    Client, Encoded, Error, SignedExtra,
-};
+use super::{AccountId, Error, StructOpt};
+use substrate_subxt::{balances::Balances,
+                      sp_runtime::{generic::SignedPayload, traits::SignedExtension},
+                      staking::Staking,
+                      system::System,
+                      Client, Encoded, SignedExtra};
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum Stash {
@@ -50,11 +48,11 @@ pub(crate) async fn main<
     _client: &Client<T, S, E>,
     _keystore: &dyn crate::keys::KeyStore,
 ) -> Result<SignedPayload<Encoded, E::Extra>, Error> {
-	match cmd {
-		Stash::Status => unimplemented!("showing validator status"),
-		Stash::Show { index } => unimplemented!("getting validator status for index {}", index),
-		Stash::Claim { index } => unimplemented!("claiming payment for {:?}", index),
-		Stash::SubmitValidatorSet => unimplemented!("submitting a validator set"),
-		Stash::AddControllerKey => unimplemented!("adding a controller key"),
-	}
+    match cmd {
+        Stash::Status => unimplemented!("showing validator status"),
+        Stash::Show { index } => unimplemented!("getting validator status for index {}", index),
+        Stash::Claim { index } => unimplemented!("claiming payment for {:?}", index),
+        Stash::SubmitValidatorSet => unimplemented!("submitting a validator set"),
+        Stash::AddControllerKey => unimplemented!("adding a controller key"),
+    }
 }

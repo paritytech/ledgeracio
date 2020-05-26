@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{AccountId, StructOpt};
+use super::{AccountId, Error, StructOpt};
 use std::marker::PhantomData;
-use substrate_subxt::{
-    balances::Balances,
-    sp_runtime::{generic::SignedPayload, traits::SignedExtension, Perbill},
-    staking::{Staking, ValidateCall, ValidatorPrefs},
-    system::System,
-    Client, Encoded, Error, SignedExtra,
-};
+use substrate_subxt::{balances::Balances,
+                      sp_runtime::{generic::SignedPayload, traits::SignedExtension, Perbill},
+                      staking::{Staking, ValidateCall, ValidatorPrefs},
+                      system::System,
+                      Client, Encoded, SignedExtra};
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum Validator {
@@ -48,11 +46,20 @@ pub(crate) async fn main<
     match cmd {
         Validator::Announce { index, commission } => {
             let call = ValidateCall {
-                prefs: ValidatorPrefs { commission: Perbill::from_parts(commission) },
+                prefs: ValidatorPrefs {
+                    commission: Perbill::from_parts(commission),
+                },
                 _runtime: PhantomData,
             };
-            let account_id = keystore.get(index as _).await.unwrap().unwrap();
-            client.create_raw_payload(&account_id, call).await
+            let account_id =
+                keystore
+                    .get(index as _)
+                    .await?
+                    .ok_or(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        "No key found",
+                    )))?;
+            Ok(client.create_raw_payload(&account_id, call).await?)
         }
         Validator::ReplaceKey { index } => unimplemented!("replacing key {}", index),
         Validator::GenerateKeys { count } => unimplemented!("deriving a new key {}", count),

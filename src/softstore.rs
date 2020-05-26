@@ -16,7 +16,7 @@
 
 //! A software keystore.
 
-use super::{keys::KeyStore, AccountId};
+use super::{keys::KeyStore, AccountId, Error};
 use async_std::prelude::*;
 
 /// This is meant for development and testing, and should not be used in
@@ -27,13 +27,14 @@ impl KeyStore for SoftKeyStore {
     fn get(
         &self,
         _index: usize,
-    ) -> Box<dyn Future<Output = Result<Option<AccountId>, String>> + Unpin> {
+    ) -> Box<dyn Future<Output = Result<Option<AccountId>, Error>> + Unpin> {
         unimplemented!("BIP 32 Derivation")
     }
+
     fn sign(
         &self,
         _message: &[u8],
-    ) -> Box<dyn Future<Output = Result<(Vec<u8>, Vec<u8>), String>> + Unpin> {
+    ) -> Box<dyn Future<Output = Result<(Vec<u8>, Vec<u8>), Error>> + Unpin> {
         unimplemented!("Signing")
     }
 }

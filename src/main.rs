@@ -29,6 +29,8 @@ use std::fmt::Debug;
 use structopt::StructOpt;
 use substrate_subxt::{sp_core, ClientBuilder};
 
+type Error = Box<dyn std::error::Error>;
+
 /// Output format
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum OutputFormat {
@@ -79,7 +81,7 @@ enum Command {
 }
 
 #[async_std::main]
-async fn main() -> Result<(), substrate_subxt::Error> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let Ledgeracio {
         dry_run,
         host,

@@ -18,7 +18,7 @@
 //!
 //! Performance should not be considered critical.
 
-use crate::AccountId;
+use crate::{AccountId, Error};
 use std::future::Future;
 
 /// A keystore, backed by software or hardware.
@@ -27,7 +27,7 @@ pub trait KeyStore {
     fn get(
         &self,
         index: usize,
-    ) -> Box<dyn Future<Output = Result<Option<AccountId>, String>> + Unpin>;
+    ) -> Box<dyn Future<Output = Result<Option<AccountId>, Error>> + Unpin>;
     /// Sign the given message asynchronously.
     ///
     /// This may fail for several reasons, including the operation being refused
@@ -37,5 +37,5 @@ pub trait KeyStore {
     fn sign(
         &self,
         message: &[u8],
-    ) -> Box<dyn Future<Output = Result<(Vec<u8>, Vec<u8>), String>> + Unpin>;
+    ) -> Box<dyn Future<Output = Result<(Vec<u8>, Vec<u8>), Error>> + Unpin>;
 }
