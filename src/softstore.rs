@@ -29,17 +29,17 @@ const HARDENED: u32 = 1u32 << 31;
 
 /// This is meant for development and testing, and should not be used in
 /// production.  Hardware-backed keystores should be used in production.
-pub struct SoftKeyStore(XPrv);
+pub struct SoftKeyStore(XPrv, AccountId);
 
 impl SoftKeyStore {
     pub fn new(bytes: &[u8; 32], account_type: AccountType, chain_code: &[u8; 32]) -> Self {
-        Self(
-            XPrv::from_nonextended_force(bytes, chain_code)
-                .derive(V2, 0x8000002Cu32)
-                .derive(V2, 0x80000162u32)
-                .derive(V2, account_type as u32 | 1u32 << 31)
-                .derive(V2, 0),
-        )
+        let private = XPrv::from_nonextended_force(bytes, chain_code)
+            .derive(V2, 0x8000002Cu32)
+            .derive(V2, 0x80000162u32)
+            .derive(V2, account_type as u32 | 1u32 << 31)
+            .derive(V2, 0);
+        let r#pub: AccountId = private.public().public_key().into();
+        Self(private, r#pub)
     }
 }
 
@@ -76,7 +76,9 @@ impl<
                 format!("Invalid index {}", index),
             )) as Box<dyn std::error::Error>)
         } else {
-            ok(Box::new(Self(self.0.derive(V2, index as u32 | 1u32 << 31))) as _)
+            let prv = self.0.derive(V2, index as u32 | 1u32 << 31);
+            let r#pub = prv.public().public_key().into();
+            ok(Box::new(Self(prv, r#pub)) as _)
         })
     }
 }
@@ -87,7 +89,7 @@ where
     S: Encode + Send + Sync + 'static + std::convert::From<Signature>,
     E: SignedExtra<T> + 'static,
 {
-    fn account_id(&self) -> &AccountId { unimplemented!() }
+    fn account_id(&self) -> &AccountId { &self.1 }
 
     fn nonce(&self) -> Option<T::Index> { None }
 
