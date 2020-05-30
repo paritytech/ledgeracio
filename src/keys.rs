@@ -19,7 +19,9 @@
 //! Performance should not be considered critical.
 
 use crate::{AccountId, Error};
+use codec::Encode;
 use std::{future::Future, pin::Pin};
+use substrate_subxt::{system::System, SignedExtra, Signer};
 
 /// The account type
 #[repr(u8)]
@@ -31,18 +33,10 @@ pub enum AccountType {
 }
 
 /// A keystore, backed by software or hardware.
-pub trait KeyStore {
-    /// The public keys, as account IDs.
-    fn get(&self, index: usize) -> Pin<Box<dyn Future<Output = Result<Option<AccountId>, Error>>>>;
-    /// Sign the given message asynchronously.
-    ///
-    /// This may fail for several reasons, including the operation being refused
-    /// by the user.
-    ///
-    /// The returned error code is meant for human consumption.
-    fn sign(
+pub trait KeyStore<T: System, S: Encode, E: SignedExtra<T>> {
+    /// Get a [`Signer`]
+    fn signer(
         &self,
-        index: u32,
-        message: &[u8],
-    ) -> Pin<Box<dyn Future<Output = Result<[u8; 64], Error>>>>;
+        index: usize,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Signer<T, S, E> + Send + Sync>, Error>>>>;
 }

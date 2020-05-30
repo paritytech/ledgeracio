@@ -15,10 +15,12 @@
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::{AccountId, Error, StructOpt};
+use codec::Encode;
 use std::marker::PhantomData;
 use substrate_subxt::{balances::Balances,
                       sp_runtime::{generic::SignedPayload, traits::SignedExtension, Perbill},
-                      staking::{Staking, ValidateCall, ValidatorPrefs},
+                      staking::{NominateCallExt, Staking, ValidateCall, ValidateCallExt,
+                                ValidatorPrefs},
                       system::System,
                       Client, Encoded, SignedExtra};
 
@@ -36,30 +38,23 @@ pub(crate) enum Validator {
 
 pub(crate) async fn main<
     T: System<AccountId = AccountId> + Balances + Send + Sync + Staking + 'static,
-    S: 'static,
+    S: Encode + Send + Sync + 'static,
     E: SignedExtension + SignedExtra<T> + 'static,
 >(
     cmd: Validator,
     client: &Client<T, S, E>,
-    keystore: &dyn crate::keys::KeyStore,
-) -> Result<SignedPayload<Encoded, E::Extra>, Error> {
+    keystore: &(dyn crate::keys::KeyStore<T, S, E> + Send + Sync),
+) -> Result<T::Hash, Error>
+where
+    <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+{
     match cmd {
         Validator::Announce { index, commission } => {
-            let call = ValidateCall {
-                prefs: ValidatorPrefs {
-                    commission: Perbill::from_parts(commission),
-                },
-                _runtime: PhantomData,
+            let prefs = ValidatorPrefs {
+                commission: Perbill::from_parts(commission),
             };
-            let account_id =
-                keystore
-                    .get(index as _)
-                    .await?
-                    .ok_or(Box::new(std::io::Error::new(
-                        std::io::ErrorKind::NotFound,
-                        "No key found",
-                    )))?;
-            Ok(client.create_raw_payload(&account_id, call).await?)
+            let signer = keystore.signer(index as _).await?;
+            Ok(client.validate(&signer, prefs).await?)
         }
         Validator::ReplaceKey { index } => unimplemented!("replacing key {}", index),
         Validator::GenerateKeys { count } => unimplemented!("deriving a new key {}", count),

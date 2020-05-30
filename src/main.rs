@@ -81,6 +81,8 @@ enum Command {
     Validator(validator::Validator),
 }
 
+type Runtime = substrate_subxt::KusamaRuntime;
+
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let Ledgeracio {
@@ -89,7 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         network: _,
         cmd,
     } = Ledgeracio::from_args();
-    let client = ClientBuilder::<substrate_subxt::KusamaRuntime>::new()
+    let client = ClientBuilder::<Runtime>::new()
         .set_url(host)
         .build()
         .await?;
@@ -105,11 +107,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::Stash(s) => stash::main(s, &client, &keystore).await,
         Command::Validator(v) => validator::main(v, &client, &keystore).await,
     }?;
-    if dry_run {
-        println!("Transaction to be submitted: {:?}", extrinsic.encode())
-    } else {
-        let hash = client.submit_extrinsic(extrinsic).await?;
-        println!("Transaction hash: {:?}", hash)
-    }
+    // if dry_run {
+    // println!("Transaction to be submitted: {:?}", extrinsic.encode())
+    // } else {
+    // let hash = client.submit_extrinsic(extrinsic).await?;
+    // println!("Transaction hash: {:?}", hash)
+    // }
     Ok(())
 }

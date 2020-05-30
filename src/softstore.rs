@@ -16,10 +16,15 @@
 
 //! A software keystore.
 
-use super::{AccountId, AccountType, Error, KeyStore};
+use super::{AccountId, AccountType, Encode, Error, KeyStore};
 use async_std::prelude::*;
 use ed25519_bip32::{DerivationScheme::V2, XPrv};
+use futures::future::{err, ok};
 use std::pin::Pin;
+use substrate_subxt::{sp_runtime::{generic::{SignedPayload, UncheckedExtrinsic},
+                                   traits::SignedExtension},
+                      system::System,
+                      Encoded, SignedExtra};
 const HARDENED: u32 = 1u32 << 31;
 
 /// This is meant for development and testing, and should not be used in
@@ -38,41 +43,68 @@ impl SoftKeyStore {
     }
 }
 
-impl KeyStore for SoftKeyStore {
-    fn get(&self, index: usize) -> Pin<Box<dyn Future<Output = Result<Option<AccountId>, Error>>>> {
-        Box::pin(async_std::future::ready(if index >= HARDENED as usize {
-            Err(Box::new(std::io::Error::new(
+type Signed<T, S, E> = Pin<
+    Box<
+        dyn Future<
+                Output = Result<
+                    UncheckedExtrinsic<
+                        <T as System>::Address,
+                        Encoded,
+                        S,
+                        <E as SignedExtra<T>>::Extra,
+                    >,
+                    String,
+                >,
+            > + Send
+            + Sync
+            + 'static,
+    >,
+>;
+impl<
+        T: System<AccountId = AccountId> + Send + Sync + 'static,
+        S: Encode + Send + Sync + std::convert::From<[u8; 64]> + 'static,
+        E: SignedExtra<T> + 'static,
+    > KeyStore<T, S, E> for SoftKeyStore
+{
+    fn signer(
+        &self,
+        index: usize,
+    ) -> Pin<
+        Box<
+            dyn Future<
+                Output = Result<Box<dyn substrate_subxt::Signer<T, S, E> + Send + Sync>, Error>,
+            >,
+        >,
+    > {
+        Box::pin(if index >= HARDENED as usize {
+            err(Box::new(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 format!("Invalid index {}", index),
             )) as Box<dyn std::error::Error>)
         } else {
-            Ok(Some(
-                self.0
-                    .derive(V2, index as u32 | 1u32 << 31)
-                    .public()
-                    .public_key()
-                    .into(),
-            ))
-        }))
+            ok(Box::new(Self(self.0.derive(V2, index as u32 | 1u32 << 31))) as _)
+        })
     }
+}
 
-    fn sign(
-        &self,
-        index: u32,
-        message: &[u8],
-    ) -> Pin<Box<dyn Future<Output = Result<[u8; 64], Error>>>> {
-        if index >= 1u32 << 31 as usize {
-            Box::pin(async_std::future::ready(Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("Invalid index {}", index),
-            ))
-                as Box<dyn std::error::Error>)))
-        } else {
-            Box::pin(async_std::future::ready(Ok(*self
-                .0
-                .derive(V2, index as u32 | 1u32 << 31)
-                .sign::<()>(message)
-                .to_bytes())))
-        }
+impl<T, S, E> substrate_subxt::Signer<T, S, E> for SoftKeyStore
+where
+    T: System<AccountId = AccountId> + Send + Sync + 'static,
+    S: Encode + Send + Sync + 'static + std::convert::From<[u8; 64]>,
+    E: SignedExtra<T> + 'static,
+{
+    fn account_id(&self) -> &T::AccountId { unimplemented!() }
+
+    fn nonce(&self) -> Option<T::Index> { None }
+
+    fn sign(&self, extrinsic: SignedPayload<Encoded, E::Extra>) -> Signed<T, S, E> {
+        let signature = self.0.sign(&extrinsic.encode()).to_bytes();
+        let (call, extra, _) = extrinsic.deconstruct();
+        Box::pin(ok(UncheckedExtrinsic::new_signed(
+            call,
+            self.account_id().clone().into(),
+            (*signature).into(),
+            extra,
+        )))
     }
 }

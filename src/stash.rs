@@ -46,8 +46,8 @@ pub(crate) async fn main<
 >(
     cmd: Stash,
     _client: &Client<T, S, E>,
-    _keystore: &dyn crate::keys::KeyStore,
-) -> Result<SignedPayload<Encoded, E::Extra>, Error> {
+    _keystore: &dyn crate::keys::KeyStore<T, S, E>,
+) -> Result<T::Hash, Error> {
     match cmd {
         Stash::Status => unimplemented!("showing validator status"),
         Stash::Show { index } => unimplemented!("getting validator status for index {}", index),
