@@ -21,10 +21,10 @@ use async_std::prelude::*;
 use ed25519_bip32::{DerivationScheme::V2, XPrv};
 use futures::future::{err, ok};
 use std::pin::Pin;
-use substrate_subxt::{sp_runtime::{generic::{SignedPayload, UncheckedExtrinsic},
-                                   traits::SignedExtension},
+use substrate_subxt::{sp_core::ed25519::Signature,
+                      sp_runtime::generic::{SignedPayload, UncheckedExtrinsic},
                       system::System,
-                      Encoded, SignedExtra};
+                      Encoded, SignedExtra, Signer};
 const HARDENED: u32 = 1u32 << 31;
 
 /// This is meant for development and testing, and should not be used in
@@ -61,21 +61,15 @@ type Signed<T, S, E> = Pin<
     >,
 >;
 impl<
-        T: System<AccountId = AccountId> + Send + Sync + 'static,
-        S: Encode + Send + Sync + std::convert::From<[u8; 64]> + 'static,
+        T: System<AccountId = AccountId, Address = AccountId> + Send + Sync + 'static,
+        S: Encode + Send + Sync + std::convert::From<Signature> + 'static,
         E: SignedExtra<T> + 'static,
     > KeyStore<T, S, E> for SoftKeyStore
 {
     fn signer(
         &self,
         index: usize,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                Output = Result<Box<dyn substrate_subxt::Signer<T, S, E> + Send + Sync>, Error>,
-            >,
-        >,
-    > {
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Signer<T, S, E> + Send + Sync>, Error>>>> {
         Box::pin(if index >= HARDENED as usize {
             err(Box::new(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
@@ -87,23 +81,24 @@ impl<
     }
 }
 
-impl<T, S, E> substrate_subxt::Signer<T, S, E> for SoftKeyStore
+impl<T, S, E> Signer<T, S, E> for SoftKeyStore
 where
-    T: System<AccountId = AccountId> + Send + Sync + 'static,
-    S: Encode + Send + Sync + 'static + std::convert::From<[u8; 64]>,
+    T: System<AccountId = AccountId, Address = AccountId> + Send + Sync + 'static,
+    S: Encode + Send + Sync + 'static + std::convert::From<Signature>,
     E: SignedExtra<T> + 'static,
 {
-    fn account_id(&self) -> &T::AccountId { unimplemented!() }
+    fn account_id(&self) -> &AccountId { unimplemented!() }
 
     fn nonce(&self) -> Option<T::Index> { None }
 
     fn sign(&self, extrinsic: SignedPayload<Encoded, E::Extra>) -> Signed<T, S, E> {
-        let signature = self.0.sign(&extrinsic.encode()).to_bytes();
+        let signature = Signature(*self.0.sign::<T>(&extrinsic.encode()).to_bytes());
         let (call, extra, _) = extrinsic.deconstruct();
+        let account_id = <Self as Signer<T, S, E>>::account_id(self);
         Box::pin(ok(UncheckedExtrinsic::new_signed(
             call,
-            self.account_id().clone().into(),
-            (*signature).into(),
+            account_id.clone().into(),
+            signature.into(),
             extra,
         )))
     }
