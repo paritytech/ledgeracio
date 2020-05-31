@@ -18,10 +18,16 @@
 
 use super::{AccountId, Error, StructOpt};
 use substrate_subxt::{balances::Balances,
+                      sp_core::crypto::Ss58Codec,
                       sp_runtime::{generic::SignedPayload, traits::SignedExtension},
-                      staking::Staking,
+                      staking::{NominateCallExt, Staking, ValidateCall, ValidateCallExt,
+                                ValidatorPrefs},
                       system::System,
                       Client, Encoded, SignedExtra};
+
+fn parse_address(arg: &str) -> Result<AccountId, String> {
+    Ss58Codec::from_string(arg).map_err(|e| format!("{:?}", e))
+}
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum Stash {
@@ -31,28 +37,38 @@ pub(crate) enum Stash {
     Status,
     /// Claim a validation payout
     Claim { index: Option<u32> },
-    /// Submit a new validator set
-    #[structopt(name = "submit-validator-set")]
-    SubmitValidatorSet,
+    /// Nominate a new validator set
+    #[structopt(name = "nominate")]
+    Nominate {
+        index: u32,
+        #[structopt(parse(try_from_str = parse_address))]
+        set: Vec<AccountId>,
+    },
     /// Add a new controller key
     #[structopt(name = "add-controller-key")]
     AddControllerKey,
 }
 
 pub(crate) async fn main<
-    T: System<AccountId = AccountId> + Balances + Send + Sync + Staking + 'static,
-    S: 'static,
+    T: System<AccountId = AccountId, Address = AccountId> + Balances + Send + Sync + Staking + 'static,
+    S: codec::Encode + Send + Sync + 'static,
     E: SignedExtension + SignedExtra<T> + 'static,
 >(
     cmd: Stash,
-    _client: &Client<T, S, E>,
-    _keystore: &dyn crate::keys::KeyStore<T, S, E>,
-) -> Result<T::Hash, Error> {
+    client: &Client<T, S, E>,
+    keystore: &dyn crate::keys::KeyStore<T, S, E>,
+) -> Result<T::Hash, Error>
+where
+    <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+{
     match cmd {
         Stash::Status => unimplemented!("showing validator status"),
         Stash::Show { index } => unimplemented!("getting validator status for index {}", index),
         Stash::Claim { index } => unimplemented!("claiming payment for {:?}", index),
-        Stash::SubmitValidatorSet => unimplemented!("submitting a validator set"),
+        Stash::Nominate { index, set } => {
+            let signer = keystore.signer(index as _).await?;
+            Ok(client.nominate(&signer, set).await?)
+        }
         Stash::AddControllerKey => unimplemented!("adding a controller key"),
     }
 }
