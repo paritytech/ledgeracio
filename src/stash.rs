@@ -19,11 +19,19 @@
 use super::{AccountId, Error, StructOpt};
 use substrate_subxt::{balances::Balances,
                       sp_core::crypto::Ss58Codec,
-                      sp_runtime::{generic::SignedPayload, traits::SignedExtension},
-                      staking::{NominateCallExt, Staking, ValidateCall, ValidateCallExt,
-                                ValidatorPrefs},
+                      sp_runtime::traits::SignedExtension,
+                      staking::{NominateCallExt, RewardDestination, SetPayeeCallExt, Staking},
                       system::System,
-                      Client, Encoded, SignedExtra};
+                      Client, SignedExtra};
+
+fn parse_reward_destination(arg: &str) -> Result<RewardDestination, &'static str> {
+    Ok(match arg {
+        "Staked" => RewardDestination::Staked,
+        "Stash" => RewardDestination::Stash,
+        "Controller" => RewardDestination::Controller,
+        _ => return Err("bad reward destination ― must be Staked, Stash, or Controller"),
+    })
+}
 
 fn parse_address(arg: &str) -> Result<AccountId, String> {
     Ss58Codec::from_string(arg).map_err(|e| format!("{:?}", e))
@@ -43,6 +51,13 @@ pub(crate) enum Stash {
         index: u32,
         #[structopt(parse(try_from_str = parse_address))]
         set: Vec<AccountId>,
+    },
+    /// Set payment target
+    #[structopt(name = "set-payee")]
+    SetPayee {
+        index: u32,
+        #[structopt(parse(try_from_str = parse_reward_destination))]
+        target: RewardDestination,
     },
     /// Add a new controller key
     #[structopt(name = "add-controller-key")]
@@ -68,6 +83,10 @@ where
         Stash::Nominate { index, set } => {
             let signer = keystore.signer(index as _).await?;
             Ok(client.nominate(&signer, set).await?)
+        }
+        Stash::SetPayee { index, target } => {
+            let signer = keystore.signer(index as _).await?;
+            Ok(client.set_payee(&signer, target).await?)
         }
         Stash::AddControllerKey => unimplemented!("adding a controller key"),
     }

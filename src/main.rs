@@ -103,15 +103,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         &[0; 32],
     );
-    let extrinsic = match cmd {
+    match cmd {
         Command::Stash(s) => stash::main(s, &client, &keystore).await,
         Command::Validator(v) => validator::main(v, &client, &keystore).await,
     }?;
-    // if dry_run {
-    // println!("Transaction to be submitted: {:?}", extrinsic.encode())
-    // } else {
-    // let hash = client.submit_extrinsic(extrinsic).await?;
-    // println!("Transaction hash: {:?}", hash)
-    // }
     Ok(())
 }

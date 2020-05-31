@@ -16,13 +16,11 @@
 
 use super::{AccountId, Error, StructOpt};
 use codec::Encode;
-use std::marker::PhantomData;
 use substrate_subxt::{balances::Balances,
-                      sp_runtime::{generic::SignedPayload, traits::SignedExtension, Perbill},
-                      staking::{NominateCallExt, Staking, ValidateCall, ValidateCallExt,
-                                ValidatorPrefs},
+                      sp_runtime::{traits::SignedExtension, Perbill},
+                      staking::{Staking, ValidateCallExt, ValidatorPrefs},
                       system::System,
-                      Client, Encoded, SignedExtra};
+                      Client, SignedExtra};
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum Validator {

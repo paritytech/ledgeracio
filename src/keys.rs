@@ -18,7 +18,7 @@
 //!
 //! Performance should not be considered critical.
 
-use crate::{AccountId, Error};
+use crate::Error;
 use codec::Encode;
 use std::{future::Future, pin::Pin};
 use substrate_subxt::{system::System, SignedExtra, Signer};
