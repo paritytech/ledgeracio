@@ -15,12 +15,13 @@
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::{AccountId, Error, StructOpt};
-use codec::Encode;
+use codec::{Decode, Encode};
 use substrate_subxt::{balances::Balances,
+                      session::{Session, SetKeysCallExt},
                       sp_runtime::{traits::SignedExtension, Perbill},
                       staking::{Staking, ValidateCallExt, ValidatorPrefs},
                       system::System,
-                      Client, SignedExtra};
+                      Client, SessionKeys, SignedExtra};
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum Validator {
@@ -29,18 +30,51 @@ pub(crate) enum Validator {
     /// Announce intention to validate
     Announce { index: u32, commission: u32 },
     /// Replace a session key
-    ReplaceKey { index: u32 },
+    #[cfg(any())]
+    ReplaceKey {
+        index: u32,
+        #[structopt(parse(try_from_str = parse_address))]
+        grandpa: ed25519::Public,
+        #[structopt(parse(try_from_str = parse_address))]
+        babe: sr25519::Public,
+        #[structopt(parse(try_from_str = parse_address))]
+        im_online: sr25519::Public,
+        #[structopt(parse(try_from_str = parse_address))]
+        authority_discovery: sr25519::Public,
+    },
+    /// Replace a session key
+    #[cfg(all())]
+    ReplaceKey {
+        index: u32,
+        #[structopt(parse(try_from_str = parse_keys))]
+        keys: SessionKeys,
+    },
     /// Generate new controller keys
     GenerateKeys { count: u32 },
 }
 
+fn parse_keys(buffer: &str) -> Result<SessionKeys, Error> {
+    let buffer: &[u8] = buffer.as_ref();
+    if !buffer.starts_with(b"0x") {
+        return Err("Hex data must start with ‘0x’".to_owned().into())
+    }
+    let bytes = ::hex::decode(&buffer[2..])?;
+    Decode::decode(&mut &*bytes).map_err(|e| Box::new(e) as _)
+}
+
 pub(crate) async fn main<
-    T: System<AccountId = AccountId> + Balances + Send + Sync + Staking + 'static,
+    T: System<AccountId = AccountId>
+        + Balances
+        + Send
+        + Sync
+        + Staking
+        + 'static
+        + Session<Keys = SessionKeys>,
     S: Encode + Send + Sync + 'static,
     E: SignedExtension + SignedExtra<T> + 'static,
 >(
     cmd: Validator,
-    client: &Client<T, S, E>,
+    client: Client<T, S, E>,
     keystore: &(dyn crate::keys::KeyStore<T, S, E> + Send + Sync),
 ) -> Result<T::Hash, Error>
 where
@@ -52,9 +86,12 @@ where
                 commission: Perbill::from_parts(commission),
             };
             let signer = keystore.signer(index as _).await?;
-            Ok(client.validate(&signer, prefs).await?)
+            Ok(client.validate(&*signer, prefs).await?)
         }
-        Validator::ReplaceKey { index } => unimplemented!("replacing key {}", index),
+        Validator::ReplaceKey { index, keys } => {
+            let signer = keystore.signer(index as _).await?;
+            Ok(client.set_keys(&*signer, keys, vec![]).await?)
+        }
         Validator::GenerateKeys { count } => unimplemented!("deriving a new key {}", count),
         Validator::Status { index } => unimplemented!("showing the status of key {:?}", index),
     }

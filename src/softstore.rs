@@ -20,11 +20,14 @@ use super::{AccountId, AccountType, Encode, Error, KeyStore};
 use async_std::prelude::*;
 use ed25519_bip32::{DerivationScheme::V2, XPrv};
 use futures::future::{err, ok};
+use hmac::{Hmac, Mac};
+use sha2::Sha512;
 use std::pin::Pin;
 use substrate_subxt::{sp_core::ed25519::Signature,
                       sp_runtime::generic::{SignedPayload, UncheckedExtrinsic},
                       system::System,
                       Encoded, SignedExtra, Signer};
+
 const HARDENED: u32 = 1u32 << 31;
 
 /// This is meant for development and testing, and should not be used in
@@ -32,14 +35,20 @@ const HARDENED: u32 = 1u32 << 31;
 pub struct SoftKeyStore(XPrv, AccountId);
 
 impl SoftKeyStore {
-    pub fn new(bytes: &[u8; 32], account_type: AccountType, chain_code: &[u8; 32]) -> Self {
-        let private = XPrv::from_nonextended_force(bytes, chain_code)
+    pub fn new(seed: &[u8], account_type: AccountType) -> Box<Self> {
+        use std::convert::TryInto as _;
+        let mut mac = Hmac::<Sha512>::new_varkey(b"Bitcoin seed").expect("key is valid");
+        mac.input(seed);
+        let code = mac.result().code();
+        let bytes: [u8; 32] = code[..32].try_into().unwrap();
+        let chain_code: [u8; 32] = code[32..].try_into().unwrap();
+        let private = XPrv::from_nonextended_force(&bytes, &chain_code)
             .derive(V2, 0x8000002Cu32)
             .derive(V2, 0x80000162u32)
             .derive(V2, account_type as u32 | 1u32 << 31)
             .derive(V2, 0);
         let r#pub: AccountId = private.public().public_key().into();
-        Self(private, r#pub)
+        Box::new(Self(private, r#pub))
     }
 }
 
@@ -60,6 +69,7 @@ type Signed<T, S, E> = Pin<
             + 'static,
     >,
 >;
+
 impl<
         T: System<AccountId = AccountId, Address = AccountId> + Send + Sync + 'static,
         S: Encode + Send + Sync + std::convert::From<Signature> + 'static,
@@ -68,9 +78,9 @@ impl<
 {
     fn signer(
         &self,
-        index: usize,
+        index: u32,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Signer<T, S, E> + Send + Sync>, Error>>>> {
-        Box::pin(if index >= HARDENED as usize {
+        Box::pin(if index >= HARDENED {
             err(Box::new(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 format!("Invalid index {}", index),

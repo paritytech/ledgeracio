@@ -16,9 +16,9 @@
 
 //! Stash commands
 
-use super::{AccountId, Error, StructOpt};
+use super::{parse_address, AccountId, Error, StructOpt};
 use substrate_subxt::{balances::Balances,
-                      sp_core::crypto::Ss58Codec,
+                      sp_core::crypto::Ss58AddressFormat,
                       sp_runtime::traits::SignedExtension,
                       staking::{NominateCallExt, RewardDestination, SetPayeeCallExt, Staking},
                       system::System,
@@ -31,10 +31,6 @@ fn parse_reward_destination(arg: &str) -> Result<RewardDestination, &'static str
         "Controller" => RewardDestination::Controller,
         _ => return Err("bad reward destination ― must be Staked, Stash, or Controller"),
     })
-}
-
-fn parse_address(arg: &str) -> Result<AccountId, String> {
-    Ss58Codec::from_string(arg).map_err(|e| format!("{:?}", e))
 }
 
 #[derive(StructOpt, Debug)]
@@ -50,7 +46,7 @@ pub(crate) enum Stash {
     Nominate {
         index: u32,
         #[structopt(parse(try_from_str = parse_address))]
-        set: Vec<AccountId>,
+        set: Vec<(AccountId, u8)>,
     },
     /// Set payment target
     #[structopt(name = "set-payee")]
@@ -70,23 +66,39 @@ pub(crate) async fn main<
     E: SignedExtension + SignedExtra<T> + 'static,
 >(
     cmd: Stash,
-    client: &Client<T, S, E>,
+    client: Client<T, S, E>,
+    network: Ss58AddressFormat,
     keystore: &dyn crate::keys::KeyStore<T, S, E>,
 ) -> Result<T::Hash, Error>
 where
     <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
 {
+    use std::convert::{TryFrom, TryInto};
     match cmd {
         Stash::Status => unimplemented!("showing validator status"),
         Stash::Show { index } => unimplemented!("getting validator status for index {}", index),
         Stash::Claim { index } => unimplemented!("claiming payment for {:?}", index),
         Stash::Nominate { index, set } => {
             let signer = keystore.signer(index as _).await?;
-            Ok(client.nominate(&signer, set).await?)
+            let mut new_set = vec![];
+            for (address, provided_network) in set.into_iter() {
+                if network != provided_network.try_into().unwrap() {
+                    return Err(format!(
+                        "Network mismatch: address {} is for network {}, but you asked to use \
+                         network {}",
+                        address,
+                        String::from(Ss58AddressFormat::try_from(provided_network).unwrap()),
+                        String::from(Ss58AddressFormat::try_from(network).unwrap()),
+                    )
+                    .into())
+                }
+                new_set.push(address)
+            }
+            Ok(client.nominate(&*signer, new_set).await?)
         }
         Stash::SetPayee { index, target } => {
             let signer = keystore.signer(index as _).await?;
-            Ok(client.set_payee(&signer, target).await?)
+            Ok(client.set_payee(&*signer, target).await?)
         }
         Stash::AddControllerKey => unimplemented!("adding a controller key"),
     }

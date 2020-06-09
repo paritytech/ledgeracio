@@ -20,10 +20,11 @@
 
 use crate::Error;
 use codec::Encode;
-use std::{future::Future, pin::Pin};
+use std::{future::Future, pin::Pin, str::FromStr};
 use substrate_subxt::{system::System, SignedExtra, Signer};
 
 /// The account type
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 pub enum AccountType {
     /// Stash accounts
@@ -32,11 +33,23 @@ pub enum AccountType {
     Validator = 1,
 }
 
+impl FromStr for AccountType {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "stash" => Ok(Self::Stash),
+            "validator" => Ok(Self::Validator),
+            _ => Err("Account type must be `stash` or `validator`"),
+        }
+    }
+}
+
 /// A keystore, backed by software or hardware.
 pub trait KeyStore<T: System, S: Encode, E: SignedExtra<T>> {
     /// Get a [`Signer`]
     fn signer(
         &self,
-        index: usize,
+        index: u32,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Signer<T, S, E> + Send + Sync>, Error>>>>;
 }
