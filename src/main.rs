@@ -16,6 +16,7 @@
 
 //! The main binary of Ledgeracio
 
+mod derivation;
 mod keys;
 mod mock;
 mod softstore;
@@ -23,7 +24,8 @@ mod stash;
 mod validator;
 
 use codec::Encode;
-use keys::{AccountType, KeyStore};
+use derivation::{AccountType, LedgeracioPath};
+use keys::KeyStore;
 use softstore::SoftKeyStore;
 use sp_core::crypto::AccountId32 as AccountId;
 use std::fmt::Debug;
@@ -84,7 +86,6 @@ struct Ledgeracio {
 
 #[derive(StructOpt, Debug)]
 enum KeySource {
-    /// File containing the seed as bytes
     /// Hardware device
     Hardware,
 }
@@ -110,9 +111,7 @@ pub fn parse_address<T: Ss58Codec>(arg: &str) -> Result<(T, u8), String> {
 
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    use std::{convert::{TryFrom, },
-              fs::File,
-              io::Read};
+    use std::{convert::TryFrom, fs::File, io::Read};
     let Ledgeracio {
         dry_run,
         host,
@@ -135,24 +134,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mnemonic = bip39::Mnemonic::from_phrase(&*s, bip39::Language::English)?;
                 bip39::Seed::new(&mnemonic, "").as_bytes().to_owned()
             };
-            SoftKeyStore::new(&*seed, match cmd {
-                Command::Stash(_) => AccountType::Stash,
-                Command::Validator(_) => AccountType::Validator,
-                Command::Address { t, .. } => t,
-            })
+            SoftKeyStore::new(&*seed)
         }
         None => unimplemented!("Hardware keystore"),
     };
-	if dry_run {
-		return Ok(())
-	}
+    if dry_run {
+        return Ok(())
+    }
     match cmd {
         Command::Stash(s) => stash::main(s, client.await?, network, &*keystore).await,
-        Command::Validator(v) => validator::main(v, client.await?, &*keystore).await,
-        Command::Address { index, .. } => {
-            let signer = keystore.signer(index).await?;
+        Command::Validator(v) => validator::main(v, client.await?, network, &*keystore).await,
+        Command::Address { index, t } => {
+            let path = LedgeracioPath::new(network, t, index)?;
+            let signer = keystore.signer(path).await?;
             let account_id: &AccountId = signer.account_id();
-            println!("{}", <AccountId as Ss58Codec>::to_ss58check_with_version(account_id, network));
+            println!(
+                "{}",
+                <AccountId as Ss58Codec>::to_ss58check_with_version(account_id, network)
+            );
             return Ok(())
         }
     }?;

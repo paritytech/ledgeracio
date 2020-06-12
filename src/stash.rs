@@ -16,7 +16,7 @@
 
 //! Stash commands
 
-use super::{parse_address, AccountId, Error, StructOpt};
+use super::{parse_address, AccountId, AccountType, Error, LedgeracioPath, StructOpt};
 use substrate_subxt::{balances::Balances,
                       sp_core::crypto::Ss58AddressFormat,
                       sp_runtime::traits::SignedExtension,
@@ -79,7 +79,8 @@ where
         Stash::Show { index } => unimplemented!("getting validator status for index {}", index),
         Stash::Claim { index } => unimplemented!("claiming payment for {:?}", index),
         Stash::Nominate { index, set } => {
-            let signer = keystore.signer(index as _).await?;
+            let path = LedgeracioPath::new(network, AccountType::Stash, index)?;
+            let signer = keystore.signer(path).await?;
             let mut new_set = vec![];
             for (address, provided_network) in set.into_iter() {
                 if network != provided_network.try_into().unwrap() {
@@ -97,7 +98,8 @@ where
             Ok(client.nominate(&*signer, new_set).await?)
         }
         Stash::SetPayee { index, target } => {
-            let signer = keystore.signer(index as _).await?;
+            let path = LedgeracioPath::new(network, AccountType::Stash, index)?;
+            let signer = keystore.signer(path).await?;
             Ok(client.set_payee(&*signer, target).await?)
         }
         Stash::AddControllerKey => unimplemented!("adding a controller key"),

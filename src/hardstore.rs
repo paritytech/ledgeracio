@@ -14,13 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
-//! A software keystore.
+//! A secure hardware keystore.  Unlike [`SoftStore`], this is considered production-quality.
+//!
+//! To use this keystore, a Ledger device with the Kusama and/or Polkadot apps installed must be
+//! connected, and the process must have permission to use it.
 
-use super::{AccountId, Encode, Error, KeyStore, LedgeracioPath};
+use super::{AccountId, AccountType, Encode, Error, KeyStore};
 use async_std::prelude::*;
 use ed25519_bip32::{DerivationScheme::V2, XPrv};
-use futures::future::ok;
-use hmac::Hmac;
+use futures::future::{err, ok};
+use hmac::{Hmac, Mac};
 use sha2::Sha512;
 use std::pin::Pin;
 use substrate_subxt::{sp_core::ed25519::Signature,
@@ -28,70 +31,45 @@ use substrate_subxt::{sp_core::ed25519::Signature,
                       system::System,
                       Encoded, SignedExtra, Signer};
 
-/// A software keystore, backed by a secret file on disk.
-///
-/// While this has no other dependencies and is convenient, it is significantly
-/// less secure than hardware-backed keystores.  It is meant for development and
-/// testing, and should not be used in production.  Hardware-backed keystores
-/// should be used in production.
-pub struct SoftKeyStore(XPrv);
-
-impl SoftKeyStore {
-    pub fn new(seed: &[u8]) -> Box<Self> {
-        use hmac::crypto_mac::{Mac as _, NewMac as _};
-        use std::convert::TryInto as _;
-        let mut mac = Hmac::<Sha512>::new_varkey(b"Bitcoin seed").expect("key is valid");
-        mac.update(seed);
-        let code = mac.finalize().into_bytes();
-        let bytes: [u8; 32] = code[..32].try_into().unwrap();
-        let chain_code: [u8; 32] = code[32..].try_into().unwrap();
-        let private = XPrv::from_nonextended_force(&bytes, &chain_code);
-        Box::new(Self(private))
-    }
+/// Hardware keystore
+pub struct HardStore {
+	inner: ledger_kusama::KusamaApp,
 }
 
-type Signed<T, S, E> = Pin<
-    Box<
-        dyn Future<
-                Output = Result<
-                    UncheckedExtrinsic<
-                        <T as System>::Address,
-                        Encoded,
-                        S,
-                        <E as SignedExtra<T>>::Extra,
-                    >,
-                    String,
-                >,
-            > + Send
-            + Sync
-            + 'static,
-    >,
->;
-
-struct SoftSigner(XPrv, AccountId);
+impl HardStore {
+	fn new() -> Result<Self, crate::Error> {
+		Ok(Self {
+			inner: ledger_kusama::KusamaApp::new(ledger_kusama::APDUTransport {
+				transport_wrapper: ledger::TransportNativeHID::new()?,
+			})
+		})
+	}
+}
 
 impl<
         T: System<AccountId = AccountId, Address = AccountId> + Send + Sync + 'static,
         S: Encode + Send + Sync + std::convert::From<Signature> + 'static,
         E: SignedExtra<T> + 'static,
-    > KeyStore<T, S, E> for SoftKeyStore
+    > KeyStore<T, S, E> for HardStore 
 {
     fn signer(
         &self,
         path: LedgeracioPath,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Signer<T, S, E> + Send + Sync>, Error>>>> {
-        {
-            let prv = path
-                .as_ref()
-                .iter()
-                .fold(self.0.clone(), |key, index| key.derive(V2, *index));
+        Box::pin(if index >= HARDENED {
+            err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("Invalid index {}", index),
+            )) as Box<dyn std::error::Error>)
+        } else {
+            let prv = self.0.derive(V2, index as u32 | 1u32 << 31);
             let r#pub = prv.public().public_key().into();
-            Box::pin(ok(Box::new(SoftSigner(prv, r#pub)) as _))
-        }
+            ok(Box::new(Self(prv, r#pub)) as _)
+        })
     }
 }
 
-impl<T, S, E> Signer<T, S, E> for SoftSigner
+impl<T, S, E> Signer<T, S, E> for SoftKeyStore
 where
     T: System<AccountId = AccountId, Address = AccountId> + Send + Sync + 'static,
     S: Encode + Send + Sync + 'static + std::convert::From<Signature>,

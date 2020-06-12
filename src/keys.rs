@@ -18,38 +18,16 @@
 //!
 //! Performance should not be considered critical.
 
-use crate::Error;
+use crate::{derivation::LedgeracioPath, Error};
 use codec::Encode;
-use std::{future::Future, pin::Pin, str::FromStr};
+use std::{future::Future, pin::Pin};
 use substrate_subxt::{system::System, SignedExtra, Signer};
-
-/// The account type
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(u8)]
-pub enum AccountType {
-    /// Stash accounts
-    Stash = 0,
-    /// Validator accounts
-    Validator = 1,
-}
-
-impl FromStr for AccountType {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "stash" => Ok(Self::Stash),
-            "validator" => Ok(Self::Validator),
-            _ => Err("Account type must be `stash` or `validator`"),
-        }
-    }
-}
 
 /// A keystore, backed by software or hardware.
 pub trait KeyStore<T: System, S: Encode, E: SignedExtra<T>> {
     /// Get a [`Signer`]
     fn signer(
         &self,
-        index: u32,
+        path: LedgeracioPath,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Signer<T, S, E> + Send + Sync>, Error>>>>;
 }

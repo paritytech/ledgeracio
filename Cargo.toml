@@ -10,17 +10,21 @@ license = "GPLv3+"
 substrate-subxt = { path = "../substrate-subxt" }
 structopt = "0.3.14"
 codec = { package = "parity-scale-codec", version = "1.3.0" }
-sp-core = { version = "2.0.0-rc2", features = ["full_crypto", "std"] }
-frame-support = "2.0.0-rc2"
+frame-support = "2.0.0-rc3"
 async-std = { version = "1.5.0", features = ["attributes"] }
 ed25519-bip32 = "0.3.1"
 futures = "0.3.5"
-hmac = "0.7.1"
-sha2 = "0.8.2"
+hmac = "0.8.0"
+sha2 = "0.9.0"
 tiny-bip39 = "0.7.3"
 hex = "0.4.2"
+ledger-kusama = { git = "https://github.com/Zondax/ledger-kusama-rs" }
+zx-bip44 = { git = "https://github.com/Zondax/blockchain-tools-rs" }
+thiserror = "1.0.19"
 
 [profile.release]
 lto = "fat"
 codegen-units = 1
+panic = "abort"
 incremental = false
+opt-level = 3

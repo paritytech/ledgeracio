@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{AccountId, Error, StructOpt};
+use super::{AccountId, AccountType, Error, LedgeracioPath, StructOpt};
 use codec::{Decode, Encode};
 use substrate_subxt::{balances::Balances,
                       session::{Session, SetKeysCallExt},
+                      sp_core::crypto::Ss58AddressFormat,
                       sp_runtime::{traits::SignedExtension, Perbill},
                       staking::{Staking, ValidateCallExt, ValidatorPrefs},
                       system::System,
@@ -75,6 +76,7 @@ pub(crate) async fn main<
 >(
     cmd: Validator,
     client: Client<T, S, E>,
+    network: Ss58AddressFormat,
     keystore: &(dyn crate::keys::KeyStore<T, S, E> + Send + Sync),
 ) -> Result<T::Hash, Error>
 where
@@ -82,14 +84,16 @@ where
 {
     match cmd {
         Validator::Announce { index, commission } => {
+            let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
             let prefs = ValidatorPrefs {
                 commission: Perbill::from_parts(commission),
             };
-            let signer = keystore.signer(index as _).await?;
+            let signer = keystore.signer(path).await?;
             Ok(client.validate(&*signer, prefs).await?)
         }
         Validator::ReplaceKey { index, keys } => {
-            let signer = keystore.signer(index as _).await?;
+            let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
+            let signer = keystore.signer(path).await?;
             Ok(client.set_keys(&*signer, keys, vec![]).await?)
         }
         Validator::GenerateKeys { count } => unimplemented!("deriving a new key {}", count),
