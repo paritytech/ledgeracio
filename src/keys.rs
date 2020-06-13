@@ -21,7 +21,27 @@
 use crate::{derivation::LedgeracioPath, Error};
 use codec::Encode;
 use std::{future::Future, pin::Pin};
-use substrate_subxt::{system::System, SignedExtra, Signer};
+
+use substrate_subxt::{sp_runtime::generic::UncheckedExtrinsic, system::System, Encoded,
+                      SignedExtra, Signer};
+
+pub type Signed<T, S, E> = Pin<
+    Box<
+        dyn Future<
+                Output = Result<
+                    UncheckedExtrinsic<
+                        <T as System>::Address,
+                        Encoded,
+                        S,
+                        <E as SignedExtra<T>>::Extra,
+                    >,
+                    String,
+                >,
+            > + Send
+            + Sync
+            + 'static,
+    >,
+>;
 
 /// A keystore, backed by software or hardware.
 pub trait KeyStore<T: System, S: Encode, E: SignedExtra<T>> {

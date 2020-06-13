@@ -17,6 +17,7 @@
 //! The main binary of Ledgeracio
 
 mod derivation;
+mod hardstore;
 mod keys;
 mod mock;
 mod softstore;
@@ -34,7 +35,7 @@ use substrate_subxt::{sp_core,
                       sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
                       ClientBuilder};
 
-type Error = Box<dyn std::error::Error>;
+type Error = Box<dyn std::error::Error + Send + Sync>;
 
 /// Output format
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -110,7 +111,7 @@ pub fn parse_address<T: Ss58Codec>(arg: &str) -> Result<(T, u8), String> {
 }
 
 #[async_std::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     use std::{convert::TryFrom, fs::File, io::Read};
     let Ledgeracio {
         dry_run,
@@ -136,7 +137,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
             SoftKeyStore::new(&*seed)
         }
-        None => unimplemented!("Hardware keystore"),
+        None => Box::new(hardstore::HardStore::new()?),
     };
     if dry_run {
         return Ok(())
@@ -146,7 +147,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::Validator(v) => validator::main(v, client.await?, network, &*keystore).await,
         Command::Address { index, t } => {
             let path = LedgeracioPath::new(network, t, index)?;
-            let signer = keystore.signer(path).await?;
+            let signer = keystore.signer(path).await.unwrap();
             let account_id: &AccountId = signer.account_id();
             println!(
                 "{}",
@@ -154,6 +155,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
             return Ok(())
         }
-    }?;
+    }.unwrap();
     Ok(())
 }

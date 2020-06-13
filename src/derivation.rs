@@ -118,6 +118,14 @@ impl LedgeracioPath {
     pub fn index(&self) -> u32 { (self.0).0[4] }
 }
 
+impl Clone for LedgeracioPath {
+    fn clone(&self) -> Self { Self(BIP44Path((self.0).0)) }
+}
+
 impl AsRef<[u32]> for LedgeracioPath {
     fn as_ref(&self) -> &[u32] { &(self.0).0 }
+}
+
+impl AsRef<zx_bip44::BIP44Path> for LedgeracioPath {
+    fn as_ref(&self) -> &zx_bip44::BIP44Path { &self.0 }
 }

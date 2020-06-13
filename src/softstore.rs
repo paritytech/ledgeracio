@@ -16,7 +16,7 @@
 
 //! A software keystore.
 
-use super::{AccountId, Encode, Error, KeyStore, LedgeracioPath};
+use super::{keys::Signed, AccountId, Encode, Error, KeyStore, LedgeracioPath};
 use async_std::prelude::*;
 use ed25519_bip32::{DerivationScheme::V2, XPrv};
 use futures::future::ok;
@@ -50,24 +50,6 @@ impl SoftKeyStore {
     }
 }
 
-type Signed<T, S, E> = Pin<
-    Box<
-        dyn Future<
-                Output = Result<
-                    UncheckedExtrinsic<
-                        <T as System>::Address,
-                        Encoded,
-                        S,
-                        <E as SignedExtra<T>>::Extra,
-                    >,
-                    String,
-                >,
-            > + Send
-            + Sync
-            + 'static,
-    >,
->;
-
 struct SoftSigner(XPrv, AccountId);
 
 impl<
@@ -81,8 +63,8 @@ impl<
         path: LedgeracioPath,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Signer<T, S, E> + Send + Sync>, Error>>>> {
         {
-            let prv = path
-                .as_ref()
+            let prv: &[u32] = path.as_ref();
+            let prv = prv
                 .iter()
                 .fold(self.0.clone(), |key, index| key.derive(V2, *index));
             let r#pub = prv.public().public_key().into();

@@ -14,80 +14,109 @@
 // You should have received a copy of the GNU General Public License
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
-//! A secure hardware keystore.  Unlike [`SoftStore`], this is considered production-quality.
+//! A secure hardware keystore.  Unlike [`SoftStore`], this is considered
+//! production-quality.
 //!
-//! To use this keystore, a Ledger device with the Kusama and/or Polkadot apps installed must be
-//! connected, and the process must have permission to use it.
+//! To use this keystore, a Ledger device with the Kusama and/or Polkadot apps
+//! installed must be connected, and the process must have permission to use it.
 
-use super::{AccountId, AccountType, Encode, Error, KeyStore};
+use super::{keys::Signed, AccountId, Encode, Error, KeyStore, LedgeracioPath};
 use async_std::prelude::*;
-use ed25519_bip32::{DerivationScheme::V2, XPrv};
-use futures::future::{err, ok};
-use hmac::{Hmac, Mac};
-use sha2::Sha512;
-use std::pin::Pin;
-use substrate_subxt::{sp_core::ed25519::Signature,
-                      sp_runtime::generic::{SignedPayload, UncheckedExtrinsic},
+use futures::future::{err, ok, ready};
+use ledger_kusama::KusamaApp;
+use std::{pin::Pin,
+          sync::{Arc, Mutex}};
+use substrate_subxt::{sp_core::ecdsa::Signature,
+                      sp_runtime::{generic::{SignedPayload, UncheckedExtrinsic},
+                                   traits::SignedExtension},
                       system::System,
                       Encoded, SignedExtra, Signer};
 
 /// Hardware keystore
 pub struct HardStore {
-	inner: ledger_kusama::KusamaApp,
+    inner: Arc<Mutex<KusamaApp>>,
 }
 
 impl HardStore {
-	fn new() -> Result<Self, crate::Error> {
-		Ok(Self {
-			inner: ledger_kusama::KusamaApp::new(ledger_kusama::APDUTransport {
-				transport_wrapper: ledger::TransportNativeHID::new()?,
-			})
-		})
-	}
+    pub fn new() -> Result<Self, crate::Error> {
+        Ok(Self {
+            inner: Arc::new(Mutex::new(KusamaApp::new(ledger_kusama::APDUTransport {
+                transport_wrapper: ledger::TransportNativeHID::new()?,
+            }))),
+        })
+    }
+}
+
+struct HardSigner {
+    app: Arc<Mutex<KusamaApp>>,
+    path: LedgeracioPath,
+    ss58: String,
+    address: AccountId,
 }
 
 impl<
         T: System<AccountId = AccountId, Address = AccountId> + Send + Sync + 'static,
         S: Encode + Send + Sync + std::convert::From<Signature> + 'static,
         E: SignedExtra<T> + 'static,
-    > KeyStore<T, S, E> for HardStore 
+    > KeyStore<T, S, E> for HardStore
+where
+    <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
 {
     fn signer(
         &self,
         path: LedgeracioPath,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Signer<T, S, E> + Send + Sync>, Error>>>> {
-        Box::pin(if index >= HARDENED {
-            err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("Invalid index {}", index),
-            )) as Box<dyn std::error::Error>)
-        } else {
-            let prv = self.0.derive(V2, index as u32 | 1u32 << 31);
-            let r#pub = prv.public().public_key().into();
-            ok(Box::new(Self(prv, r#pub)) as _)
-        })
+        let app = self.inner.clone();
+        let ledger_address = {
+            let inner_app = app.lock().unwrap();
+            futures::executor::block_on(inner_app.get_address(path.as_ref(), false))
+        };
+        let res = {
+            let ledger_address = match ledger_address.map_err(|e| Box::new(e) as Error) {
+                Ok(e) => e,
+                Err(e) => return Box::pin(err(e)),
+            };
+            Ok(Box::new(HardSigner {
+                app,
+                ss58: ledger_address.ss58,
+                path,
+                address: ledger_address.public_key.into(),
+            })
+                as Box<dyn Signer<T, S, E> + Send + Sync + 'static>)
+        };
+        Box::pin(ready(res))
     }
 }
 
-impl<T, S, E> Signer<T, S, E> for SoftKeyStore
+impl<T, S, E> Signer<T, S, E> for HardSigner
 where
     T: System<AccountId = AccountId, Address = AccountId> + Send + Sync + 'static,
     S: Encode + Send + Sync + 'static + std::convert::From<Signature>,
     E: SignedExtra<T> + 'static,
+    <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
 {
-    fn account_id(&self) -> &AccountId { &self.1 }
+    fn account_id(&self) -> &AccountId { &self.address }
 
     fn nonce(&self) -> Option<T::Index> { None }
 
     fn sign(&self, extrinsic: SignedPayload<Encoded, E::Extra>) -> Signed<T, S, E> {
-        let signature = Signature(*self.0.sign::<T>(&extrinsic.encode()).to_bytes());
+        let app = self.app.clone();
+        let path = self.path.clone();
+        let signature = match futures::executor::block_on(
+            app.lock().unwrap().sign(path.as_ref(), &extrinsic.encode()),
+        ) {
+            Ok(e) => e,
+            Err(e) => return Box::pin(err(e.to_string())),
+        };
+        let signature = Signature::from_raw(signature);
         let (call, extra, _) = extrinsic.deconstruct();
         let account_id = <Self as Signer<T, S, E>>::account_id(self);
-        Box::pin(ok(UncheckedExtrinsic::new_signed(
+        let res = ok(UncheckedExtrinsic::new_signed(
             call,
             account_id.clone().into(),
             signature.into(),
             extra,
-        )))
+        ));
+        Box::pin(res)
     }
 }
