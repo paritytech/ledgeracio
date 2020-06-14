@@ -69,12 +69,12 @@ pub const HARDENED: u32 = 1 << 31;
 /// The [SLIP-0044] code for Polkadot
 ///
 /// [SLIP-O044]: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-pub const POLKADOT: u32 = HARDENED | 354;
+pub const POLKADOT: u32 = 0x80000162;
 
 /// The [SLIP-0044] code for Kusama
 ///
 /// [SLIP-O044]: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-pub const KUSAMA: u32 = HARDENED | 354;
+pub const KUSAMA: u32 = 0x800001b2;
 
 impl LedgeracioPath {
     /// Create a new Ledgeracio derivation path, or return an error if the path
@@ -84,6 +84,7 @@ impl LedgeracioPath {
         account_type: AccountType,
         account_index: u32,
     ) -> Result<Self, DerivationPathError> {
+		assert_eq!(HARDENED, 0x80000000);
         let slip_0044_code = match network {
             Ss58AddressFormat::PolkadotAccount => POLKADOT,
             Ss58AddressFormat::KusamaAccount => KUSAMA,
