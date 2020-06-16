@@ -84,7 +84,7 @@ impl LedgeracioPath {
         account_type: AccountType,
         account_index: u32,
     ) -> Result<Self, DerivationPathError> {
-		assert_eq!(HARDENED, 0x80000000);
+        assert_eq!(HARDENED, 0x80000000);
         let slip_0044_code = match network {
             Ss58AddressFormat::PolkadotAccount => POLKADOT,
             Ss58AddressFormat::KusamaAccount => KUSAMA,
