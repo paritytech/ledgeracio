@@ -22,13 +22,15 @@
 
 use super::{keys::Signed, AccountId, Encode, Error, KeyStore, LedgeracioPath};
 use async_std::prelude::*;
+use codec::Decode;
 use futures::future::{err, ok, ready};
 use ledger_kusama::KusamaApp;
-use std::{pin::Pin,
+use std::{convert::From,
+          pin::Pin,
           sync::{Arc, Mutex}};
-use substrate_subxt::{sp_core::ecdsa::Signature,
-                      sp_runtime::{generic::{SignedPayload, UncheckedExtrinsic},
-                                   traits::SignedExtension},
+use substrate_subxt::{sp_runtime::{generic::{SignedPayload, UncheckedExtrinsic},
+                                   traits::SignedExtension,
+                                   MultiSignature as Signature},
                       system::System,
                       Encoded, SignedExtra, Signer};
 
@@ -56,7 +58,7 @@ struct HardSigner {
 
 impl<
         T: System<AccountId = AccountId, Address = AccountId> + Send + Sync + 'static,
-        S: Encode + Send + Sync + std::convert::From<Signature> + 'static,
+        S: Encode + Decode + Send + Sync + From<Signature> + 'static,
         E: SignedExtra<T> + 'static,
     > KeyStore<T, S, E> for HardStore
 where
@@ -91,7 +93,7 @@ where
 impl<T, S, E> Signer<T, S, E> for HardSigner
 where
     T: System<AccountId = AccountId, Address = AccountId> + Send + Sync + 'static,
-    S: Encode + Send + Sync + 'static + std::convert::From<Signature>,
+    S: Encode + Decode + Send + Sync + 'static,
     E: SignedExtra<T> + 'static,
     <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
 {
@@ -108,13 +110,16 @@ where
             Ok(e) => e,
             Err(e) => return Box::pin(err(e.to_string())),
         };
-        let signature = Signature::from_raw(signature);
+        let signature = match Decode::decode(&mut &signature[..]) {
+            Ok(e) => e,
+            Err(e) => return Box::pin(err(e.to_string())),
+        };
         let (call, extra, _) = extrinsic.deconstruct();
         let account_id = <Self as Signer<T, S, E>>::account_id(self);
         let res = ok(UncheckedExtrinsic::new_signed(
             call,
             account_id.clone().into(),
-            signature.into(),
+            signature,
             extra,
         ));
         Box::pin(res)
