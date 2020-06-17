@@ -101,7 +101,7 @@ impl LedgeracioPath {
             HARDENED | 44,
             slip_0044_code,
             account_type as u32,
-            HARDENED,
+            0,
             HARDENED | account_index,
         ])))
     }

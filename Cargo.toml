@@ -20,7 +20,7 @@ tiny-bip39 = "0.7.3"
 hex = "0.4.2"
 thiserror = "1.0.19"
 
-ledger-kusama = { git = "https://github.com/Zondax/ledger-kusama-rs", branch="dev" }
+ledger-kusama = { git = "https://github.com/Zondax/ledger-kusama-rs", branch="master" }
 zx-bip44 = { git = "https://github.com/Zondax/blockchain-tools-rs" }
 ledger-zondax-generic = { git = "https://github.com/Zondax/ledger-rs", branch="feature/upgradehid" }
 ledger-transport = { git = "https://github.com/Zondax/ledger-rs", branch="feature/upgradehid" }

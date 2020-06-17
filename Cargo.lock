@@ -558,9 +558,9 @@ checksum = "72aa14c04dfae8dd7d8a2b1cb7ca2152618cd01336dbfe704b8dcbf8d41dbd69"
 
 [[package]]
 name = "derive_more"
-version = "0.99.7"
+version = "0.99.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2127768764f1556535c01b5326ef94bd60ff08dcfbdc544d53e69ed155610f5d"
+checksum = "bc655351f820d774679da6cdc23355a93de496867d8203496675162e17b1d671"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1246,9 +1246,9 @@ dependencies = [
 
 [[package]]
 name = "itoa"
-version = "0.4.5"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8b7a7c0c47db5545ed3fef7468ee7bb5b74691498139e4b3f6a20685dc6dd8e"
+checksum = "dc6f3ad7b9d11a0c00842ff8de1b60ee58661048eb8049ed33c73594f359d7e6"
 
 [[package]]
 name = "js-sys"
@@ -1406,7 +1406,7 @@ source = "git+https://github.com/Zondax/ledger-rs?branch=feature/upgradehid#a4c6
 [[package]]
 name = "ledger-kusama"
 version = "0.5.0"
-source = "git+https://github.com/Zondax/ledger-kusama-rs?branch=dev#ae56cf2da51f10cb771b7b5e5f703e773639cadb"
+source = "git+https://github.com/Zondax/ledger-kusama-rs#78104d5cf183bfcce76d6cb1346dea4065fda154"
 dependencies = [
  "byteorder",
  "lazy_static",
@@ -2570,18 +2570,18 @@ checksum = "2439c63f3f6139d1b57529d16bc3b8bb855230c8efcc5d3a896c8bea7c3b1e84"
 
 [[package]]
 name = "ref-cast"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a214c7875e1b63fc1618db7c80efc0954f6156c9ff07699fd9039e255accdd1"
+checksum = "745c1787167ddae5569661d5ffb8b25ae5fedbf46717eaa92d652221cec72623"
 dependencies = [
  "ref-cast-impl",
 ]
 
 [[package]]
 name = "ref-cast-impl"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "602eb59cda66fcb9aec25841fb76bc01d2b34282dcdd705028da297db6f3eec8"
+checksum = "7d21b475ab879ef0e315ad99067fa25778c3b0377f57f1b00207448dac1a3144"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2617,9 +2617,9 @@ dependencies = [
 
 [[package]]
 name = "ring"
-version = "0.16.14"
+version = "0.16.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06b3fefa4f12272808f809a0af618501fdaba41a58963c5fb72238ab0be09603"
+checksum = "952cd6b98c85bbc30efa1ba5783b8abf12fec8b3287ffa52605b9432313e34e4"
 dependencies = [
  "cc",
  "libc",
@@ -3715,6 +3715,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "tinyvec"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53953d2d3a5ad81d9f844a32f14ebb121f50b650cd59d0ee2a07cf13c617efed"
+
+[[package]]
 name = "tokio"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3866,11 +3872,11 @@ dependencies = [
 
 [[package]]
 name = "unicode-normalization"
-version = "0.1.12"
+version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5479532badd04e128284890390c1e876ef7a993d0570b3597ae43dfa1d59afa4"
+checksum = "6fb19cf769fa8c6a80a162df694621ebeb4dafb606470b2b2fce0be40a98a977"
 dependencies = [
- "smallvec 1.4.0",
+ "tinyvec",
 ]
 
 [[package]]
