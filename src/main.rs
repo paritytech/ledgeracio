@@ -147,7 +147,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         Command::Validator(v) => validator::main(v, client.await?, network, &*keystore).await,
         Command::Address { index, t } => {
             let path = LedgeracioPath::new(network, t, index)?;
-            let signer = keystore.signer(path).await.unwrap();
+            let signer = keystore.signer(path)?;
             let account_id: &AccountId = signer.account_id();
             println!(
                 "{}",

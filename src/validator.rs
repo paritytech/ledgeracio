@@ -88,12 +88,12 @@ where
             let prefs = ValidatorPrefs {
                 commission: Perbill::from_parts(commission),
             };
-            let signer = keystore.signer(path).await?;
+            let signer = keystore.signer(path)?;
             Ok(client.validate(&*signer, prefs).await?)
         }
         Validator::ReplaceKey { index, keys } => {
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
-            let signer = keystore.signer(path).await?;
+            let signer = keystore.signer(path)?;
             Ok(client.set_keys(&*signer, keys, vec![]).await?)
         }
         Validator::GenerateKeys { count } => unimplemented!("deriving a new key {}", count),

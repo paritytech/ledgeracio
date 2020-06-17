@@ -80,7 +80,7 @@ where
         Stash::Claim { index } => unimplemented!("claiming payment for {:?}", index),
         Stash::Nominate { index, set } => {
             let path = LedgeracioPath::new(network, AccountType::Stash, index)?;
-            let signer = keystore.signer(path).await?;
+            let signer = keystore.signer(path)?;
             let mut new_set = vec![];
             for (address, provided_network) in set.into_iter() {
                 if network != provided_network.try_into().unwrap() {
@@ -99,7 +99,7 @@ where
         }
         Stash::SetPayee { index, target } => {
             let path = LedgeracioPath::new(network, AccountType::Stash, index)?;
-            let signer = keystore.signer(path).await?;
+            let signer = keystore.signer(path)?;
             Ok(client.set_payee(&*signer, target).await?)
         }
         Stash::AddControllerKey => unimplemented!("adding a controller key"),

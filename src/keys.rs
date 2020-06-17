@@ -46,8 +46,6 @@ pub type Signed<T, S, E> = Pin<
 /// A keystore, backed by software or hardware.
 pub trait KeyStore<T: System, S: Encode, E: SignedExtra<T>> {
     /// Get a [`Signer`]
-    fn signer(
-        &self,
-        path: LedgeracioPath,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Signer<T, S, E> + Send + Sync>, Error>>>>;
+    fn signer(&self, path: LedgeracioPath)
+        -> Result<Box<dyn Signer<T, S, E> + Send + Sync>, Error>;
 }

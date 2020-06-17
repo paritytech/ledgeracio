@@ -21,12 +21,10 @@
 //! installed must be connected, and the process must have permission to use it.
 
 use super::{keys::Signed, AccountId, Encode, Error, KeyStore, LedgeracioPath};
-use async_std::prelude::*;
 use codec::Decode;
-use futures::future::{err, ok, ready};
+use futures::future::{err, ok};
 use ledger_kusama::KusamaApp;
 use std::{convert::From,
-          pin::Pin,
           sync::{Arc, Mutex}};
 use substrate_subxt::{sp_runtime::{generic::{SignedPayload, UncheckedExtrinsic},
                                    traits::SignedExtension,
@@ -68,7 +66,7 @@ where
     fn signer(
         &self,
         path: LedgeracioPath,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Signer<T, S, E> + Send + Sync>, Error>>>> {
+    ) -> Result<Box<dyn Signer<T, S, E> + Send + Sync>, Error> {
         let app = self.inner.clone();
         let ledger_address = {
             let inner_app = app.lock().unwrap();
@@ -76,7 +74,7 @@ where
         };
 
         let res = {
-            let ledger_address = match ledger_address.map_err(|e| Box::new(e) as Error) {
+            let ledger_address = match ledger_address {
                 Ok(e) => e,
                 Err(e) => {
                     eprintln!(
@@ -85,7 +83,7 @@ where
                          are using. ",
                         e
                     );
-                    return Box::pin(err(e))
+                    return Err(Box::new(e) as _)
                 }
             };
             Ok(Box::new(HardSigner {
@@ -96,7 +94,7 @@ where
             })
                 as Box<dyn Signer<T, S, E> + Send + Sync + 'static>)
         };
-        Box::pin(ready(res))
+        res
     }
 }
 
