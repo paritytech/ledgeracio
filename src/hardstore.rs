@@ -62,18 +62,23 @@ impl<
         E: SignedExtra<T> + 'static,
     > KeyStore<T, S, E> for HardStore
 where
-    <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned:
+        Send + Sync + std::fmt::Debug,
 {
     fn signer(
         &self,
         path: LedgeracioPath,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Signer<T, S, E> + Send + Sync>, Error>>>> {
+        #[cfg(any())]
         println!("Trying to obtain a signer");
         let app = self.inner.clone();
         let ledger_address = {
             let path_ref: &zx_bip44::BIP44Path = path.as_ref();
+            #[cfg(any())]
             println!("Getting address for path {:?}", path_ref);
+            #[cfg(any())]
             let correct_path = zx_bip44::BIP44Path::from_string("m/44'/434'/0/0/5").unwrap();
+            #[cfg(any())]
             assert_eq!(correct_path.0[..2], path_ref.0[..2]);
             let inner_app = app.lock().unwrap();
             futures::executor::block_on(inner_app.get_address(path.as_ref(), false))
@@ -87,6 +92,7 @@ where
                     return Box::pin(err(e))
                 }
             };
+            #[cfg(any())]
             println!("Signer obtained");
             Ok(Box::new(HardSigner {
                 app,
@@ -105,7 +111,8 @@ where
     T: System<AccountId = AccountId, Address = AccountId> + Send + Sync + 'static,
     S: Encode + Decode + Send + Sync + 'static,
     E: SignedExtra<T> + 'static,
-    <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned:
+        Send + Sync + std::fmt::Debug,
 {
     fn account_id(&self) -> &AccountId { &self.address }
 
@@ -114,18 +121,25 @@ where
     fn sign(&self, extrinsic: SignedPayload<Encoded, E::Extra>) -> Signed<T, S, E> {
         let app = self.app.clone();
         let path = self.path.clone();
-        println!("Signing extrinsic 0x{}", hex::encode(extrinsic.encode()));
-        let signature = match futures::executor::block_on(
-            app.lock().unwrap().sign(path.as_ref(), &extrinsic.encode()),
-        ) {
-            Ok(e) => e,
-            Err(e) => return Box::pin(err(e.to_string())),
-        };
+        let encoded = extrinsic.encode();
+        let (call, extra, additional_signed) = extrinsic.deconstruct();
+        let s: <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned =
+            additional_signed;
+        #[cfg(any())]
+        println!(
+            "Signing extrinsic 0x{} with additional signed data {:?}",
+            hex::encode(&encoded),
+            s
+        );
+        let signature =
+            match futures::executor::block_on(app.lock().unwrap().sign(path.as_ref(), &encoded)) {
+                Ok(e) => e,
+                Err(e) => return Box::pin(err(e.to_string())),
+            };
         let signature = match Decode::decode(&mut &signature[..]) {
             Ok(e) => e,
             Err(e) => return Box::pin(err(e.to_string())),
         };
-        let (call, extra, _) = extrinsic.deconstruct();
         let account_id = <Self as Signer<T, S, E>>::account_id(self);
         let res = ok(UncheckedExtrinsic::new_signed(
             call,

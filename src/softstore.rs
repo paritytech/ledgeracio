@@ -84,6 +84,8 @@ where
     fn nonce(&self) -> Option<T::Index> { None }
 
     fn sign(&self, extrinsic: SignedPayload<Encoded, E::Extra>) -> Signed<T, S, E> {
+        #[cfg(any())]
+        println!("Signing extrinsic 0x{}", hex::encode(extrinsic.encode()));
         let signature = Signature(*self.0.sign::<T>(&extrinsic.encode()).to_bytes());
         let (call, extra, _) = extrinsic.deconstruct();
         let account_id = <Self as Signer<T, S, E>>::account_id(self);
