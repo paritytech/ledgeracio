@@ -69,17 +69,8 @@ where
         &self,
         path: LedgeracioPath,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Signer<T, S, E> + Send + Sync>, Error>>>> {
-        #[cfg(any())]
-        println!("Trying to obtain a signer");
         let app = self.inner.clone();
         let ledger_address = {
-            let path_ref: &zx_bip44::BIP44Path = path.as_ref();
-            #[cfg(any())]
-            println!("Getting address for path {:?}", path_ref);
-            #[cfg(any())]
-            let correct_path = zx_bip44::BIP44Path::from_string("m/44'/434'/0/0/5").unwrap();
-            #[cfg(any())]
-            assert_eq!(correct_path.0[..2], path_ref.0[..2]);
             let inner_app = app.lock().unwrap();
             futures::executor::block_on(inner_app.get_address(path.as_ref(), false))
         };
@@ -88,12 +79,15 @@ where
             let ledger_address = match ledger_address.map_err(|e| Box::new(e) as Error) {
                 Ok(e) => e,
                 Err(e) => {
-                    eprintln!("Failed to obtain a signer: {}", e);
+                    eprintln!(
+                        "Failed to obtain a signer: {}.\n\nCheck that your Ledger device is \
+                         connected, and that you have the correct app\nopen for the network you \
+                         are using. ",
+                        e
+                    );
                     return Box::pin(err(e))
                 }
             };
-            #[cfg(any())]
-            println!("Signer obtained");
             Ok(Box::new(HardSigner {
                 app,
                 ss58: ledger_address.ss58,
@@ -122,15 +116,7 @@ where
         let app = self.app.clone();
         let path = self.path.clone();
         let encoded = extrinsic.encode();
-        let (call, extra, additional_signed) = extrinsic.deconstruct();
-        let s: <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned =
-            additional_signed;
-        #[cfg(any())]
-        println!(
-            "Signing extrinsic 0x{} with additional signed data {:?}",
-            hex::encode(&encoded),
-            s
-        );
+        let (call, extra, _) = extrinsic.deconstruct();
         let signature =
             match futures::executor::block_on(app.lock().unwrap().sign(path.as_ref(), &encoded)) {
                 Ok(e) => e,
