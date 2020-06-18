@@ -20,7 +20,7 @@ use substrate_subxt::{balances::Balances,
                       session::{Session, SetKeysCallExt},
                       sp_core::crypto::Ss58AddressFormat,
                       sp_runtime::{traits::SignedExtension, Perbill},
-                      staking::{Staking, ValidateCallExt, ValidatorPrefs},
+                      staking::{LedgerStore, Staking, ValidateCallExt, ValidatorPrefs},
                       system::System,
                       Client, SessionKeys, SignedExtra};
 
@@ -70,7 +70,8 @@ pub(crate) async fn main<
         + Sync
         + Staking
         + 'static
-        + Session<Keys = SessionKeys>,
+        + Session<Keys = SessionKeys>
+        + std::fmt::Debug,
     S: Encode + Send + Sync + 'static,
     E: SignedExtension + SignedExtra<T> + 'static,
 >(
@@ -97,6 +98,16 @@ where
             Ok(client.set_keys(&*signer, keys, vec![]).await?)
         }
         Validator::GenerateKeys { count } => unimplemented!("deriving a new key {}", count),
-        Validator::Status { index } => unimplemented!("showing the status of key {:?}", index),
+        Validator::Status { index } => {
+            let path = LedgeracioPath::new(
+                network,
+                AccountType::Validator,
+                index.expect("account enumeration not implemented"),
+            )?;
+            let controller: AccountId = keystore.signer(path)?.account_id().clone();
+            let nominators = client.fetch(LedgerStore { controller }, None).await?;
+            println!("Validator status: {:#?}", nominators);
+            Ok(Default::default())
+        }
     }
 }

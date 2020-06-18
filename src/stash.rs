@@ -20,7 +20,8 @@ use super::{parse_address, AccountId, AccountType, Error, LedgeracioPath, Struct
 use substrate_subxt::{balances::Balances,
                       sp_core::crypto::Ss58AddressFormat,
                       sp_runtime::traits::SignedExtension,
-                      staking::{NominateCallExt, RewardDestination, SetPayeeCallExt, Staking},
+                      staking::{NominateCallExt, NominatorsStore, RewardDestination,
+                                SetPayeeCallExt, Staking},
                       system::System,
                       Client, SignedExtra};
 
@@ -61,7 +62,13 @@ pub(crate) enum Stash {
 }
 
 pub(crate) async fn main<
-    T: System<AccountId = AccountId, Address = AccountId> + Balances + Send + Sync + Staking + 'static,
+    T: System<AccountId = AccountId, Address = AccountId>
+        + Balances
+        + Send
+        + Sync
+        + Staking
+        + std::fmt::Debug
+        + 'static,
     S: codec::Encode + Send + Sync + 'static,
     E: SignedExtension + SignedExtra<T> + 'static,
 >(
@@ -76,7 +83,7 @@ where
     use std::convert::{TryFrom, TryInto};
     match cmd {
         Stash::Status => unimplemented!("showing validator status"),
-        Stash::Show { index } => unimplemented!("getting validator status for index {}", index),
+        Stash::Show { index } => unimplemented!("retrieving stash keys"),
         Stash::Claim { index } => unimplemented!("claiming payment for {:?}", index),
         Stash::Nominate { index, set } => {
             let path = LedgeracioPath::new(network, AccountType::Stash, index)?;
