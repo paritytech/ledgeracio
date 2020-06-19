@@ -31,27 +31,11 @@ pub(crate) enum Validator {
     /// Announce intention to validate
     Announce { index: u32, commission: u32 },
     /// Replace a session key
-    #[cfg(any())]
-    ReplaceKey {
-        index: u32,
-        #[structopt(parse(try_from_str = parse_address))]
-        grandpa: ed25519::Public,
-        #[structopt(parse(try_from_str = parse_address))]
-        babe: sr25519::Public,
-        #[structopt(parse(try_from_str = parse_address))]
-        im_online: sr25519::Public,
-        #[structopt(parse(try_from_str = parse_address))]
-        authority_discovery: sr25519::Public,
-    },
-    /// Replace a session key
-    #[cfg(all())]
     ReplaceKey {
         index: u32,
         #[structopt(parse(try_from_str = parse_keys))]
         keys: SessionKeys,
     },
-    /// Generate new controller keys
-    GenerateKeys { count: u32 },
 }
 
 fn parse_keys(buffer: &str) -> Result<SessionKeys, Error> {

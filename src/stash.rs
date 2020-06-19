@@ -56,9 +56,6 @@ pub(crate) enum Stash {
         #[structopt(parse(try_from_str = parse_reward_destination))]
         target: RewardDestination,
     },
-    /// Add a new controller key
-    #[structopt(name = "add-controller-key")]
-    AddControllerKey,
 }
 
 pub(crate) async fn main<
@@ -109,6 +106,5 @@ where
             let signer = keystore.signer(path)?;
             Ok(client.set_payee(&*signer, target).await?)
         }
-        Stash::AddControllerKey => unimplemented!("adding a controller key"),
     }
 }
