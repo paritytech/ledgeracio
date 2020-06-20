@@ -81,7 +81,6 @@ where
             let signer = keystore.signer(path)?;
             Ok(client.set_keys(&*signer, keys, vec![]).await?)
         }
-        Validator::GenerateKeys { count } => unimplemented!("deriving a new key {}", count),
         Validator::Status { index } => {
             let path = LedgeracioPath::new(
                 network,

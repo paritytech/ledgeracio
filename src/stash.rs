@@ -20,7 +20,7 @@ use super::{parse_address, AccountId, AccountType, Error, LedgeracioPath, Struct
 use substrate_subxt::{balances::Balances,
                       sp_core::crypto::Ss58AddressFormat,
                       sp_runtime::traits::SignedExtension,
-                      staking::{NominateCallExt, NominatorsStore, RewardDestination,
+                      staking::{LedgerStore, NominateCallExt, NominatorsStore, RewardDestination,
                                 SetPayeeCallExt, Staking},
                       system::System,
                       Client, SignedExtra};
@@ -76,15 +76,33 @@ pub(crate) async fn main<
 ) -> Result<T::Hash, Error>
 where
     <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    <T as Balances>::Balance: std::fmt::Display,
 {
     use std::convert::{TryFrom, TryInto};
     match cmd {
         Stash::Status => unimplemented!("showing validator status"),
-        Stash::Show { index } => unimplemented!("retrieving stash keys"),
+        Stash::Show { index } => {
+            let path = LedgeracioPath::new(network, AccountType::Stash, index)?;
+            let signer = keystore.signer(path)?;
+            let controller = signer.account_id().clone();
+            let stash = client
+                .fetch(LedgerStore { controller }, None)
+                .await?
+                .unwrap();
+            println!(
+                "Stash account: {}\nStash balance: {}\nAmount at stake: {}",
+                stash.stash, stash.total, stash.active
+            );
+            Ok(Default::default())
+        }
+
         Stash::Claim { index } => unimplemented!("claiming payment for {:?}", index),
         Stash::Nominate { index, set } => {
             let path = LedgeracioPath::new(network, AccountType::Stash, index)?;
             let signer = keystore.signer(path)?;
+            if set.is_empty() {
+                return Err("Validator set cannot be empty".to_owned().into())
+            }
             let mut new_set = vec![];
             for (address, provided_network) in set.into_iter() {
                 if network != provided_network.try_into().unwrap() {
