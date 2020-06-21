@@ -78,10 +78,10 @@ where
                 Ok(e) => e,
                 Err(e) => {
                     eprintln!(
-                        "Failed to obtain a signer: {}.\n\nCheck that your Ledger device is \
-                         connected, and that you have the correct app\nopen for the network you \
-                         are using. ",
-                        e
+                        "Failed to obtain a signer for path {:?}: {}.\n\nCheck that your Ledger \
+                         device is connected, and that you have the correct app\nopen for the \
+                         network you are using. ",
+                        path, e
                     );
                     return Err(Box::new(e) as _)
                 }

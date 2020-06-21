@@ -100,8 +100,8 @@ impl LedgeracioPath {
         Ok(Self(BIP44Path([
             HARDENED | 44,
             slip_0044_code,
-            account_type as u32,
-            0,
+            HARDENED | account_type as u32,
+            HARDENED,
             HARDENED | account_index,
         ])))
     }
