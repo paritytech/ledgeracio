@@ -23,7 +23,7 @@
 use super::{keys::Signed, AccountId, Encode, Error, KeyStore, LedgeracioPath};
 use codec::Decode;
 use futures::future::{err, ok};
-use ledger_kusama::KusamaApp;
+use ledger_substrate::SubstrateApp;
 use std::{convert::From,
           sync::{Arc, Mutex}};
 use substrate_subxt::{sp_runtime::{generic::{SignedPayload, UncheckedExtrinsic},
@@ -34,21 +34,21 @@ use substrate_subxt::{sp_runtime::{generic::{SignedPayload, UncheckedExtrinsic},
 
 /// Hardware keystore
 pub struct HardStore {
-    inner: Arc<Mutex<KusamaApp>>,
+    inner: Arc<Mutex<SubstrateApp>>,
 }
 
 impl HardStore {
     pub fn new() -> Result<Self, crate::Error> {
         Ok(Self {
-            inner: Arc::new(Mutex::new(KusamaApp::new(ledger_kusama::APDUTransport {
+            inner: Arc::new(Mutex::new(SubstrateApp::new(ledger_substrate::APDUTransport {
                 transport_wrapper: ledger::TransportNativeHID::new()?,
-            }))),
+            }, 0))),
         })
     }
 }
 
 struct HardSigner {
-    app: Arc<Mutex<KusamaApp>>,
+    app: Arc<Mutex<SubstrateApp>>,
     path: LedgeracioPath,
     ss58: String,
     address: AccountId,

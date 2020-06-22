@@ -12,9 +12,9 @@ dependencies = [
 
 [[package]]
 name = "addr2line"
-version = "0.12.1"
+version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a49806b9dadc843c61e7c97e72490ad7f7220ae249012fbda9ad0609457c0543"
+checksum = "602d785912f476e480434627e8732e6766b760c045bbf897d9dfaa9f4fbd399c"
 dependencies = [
  "gimli",
 ]
@@ -1417,12 +1417,12 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 [[package]]
 name = "ledger-apdu"
 version = "0.1.0"
-source = "git+https://github.com/Zondax/ledger-rs?branch=feature/upgradehid#a4c61df8e4a65715604fac859c04fd93b39a5b13"
+source = "git+https://github.com/Zondax/ledger-rs#e24166b802e562d814f7eddd15b49b79f634a5cf"
 
 [[package]]
-name = "ledger-kusama"
-version = "0.5.0"
-source = "git+https://github.com/Zondax/ledger-kusama-rs#78104d5cf183bfcce76d6cb1346dea4065fda154"
+name = "ledger-substrate"
+version = "0.6.0"
+source = "git+https://github.com/Zondax/ledger-substrate-rs#c5520a6348d1b58141440f0f5e99125a4dda97ce"
 dependencies = [
  "byteorder",
  "lazy_static",
@@ -1437,7 +1437,7 @@ dependencies = [
 [[package]]
 name = "ledger-transport"
 version = "0.0.0"
-source = "git+https://github.com/Zondax/ledger-rs?branch=feature/upgradehid#a4c61df8e4a65715604fac859c04fd93b39a5b13"
+source = "git+https://github.com/Zondax/ledger-rs#e24166b802e562d814f7eddd15b49b79f634a5cf"
 dependencies = [
  "byteorder",
  "futures 0.3.5",
@@ -1454,7 +1454,7 @@ dependencies = [
 [[package]]
 name = "ledger-transport-hid"
 version = "0.3.0"
-source = "git+https://github.com/Zondax/ledger-rs?branch=feature/upgradehid#a4c61df8e4a65715604fac859c04fd93b39a5b13"
+source = "git+https://github.com/Zondax/ledger-rs#e24166b802e562d814f7eddd15b49b79f634a5cf"
 dependencies = [
  "byteorder",
  "cfg-if",
@@ -1471,7 +1471,7 @@ dependencies = [
 [[package]]
 name = "ledger-zondax-generic"
 version = "0.1.0"
-source = "git+https://github.com/Zondax/ledger-rs?branch=feature/upgradehid#a4c61df8e4a65715604fac859c04fd93b39a5b13"
+source = "git+https://github.com/Zondax/ledger-rs#e24166b802e562d814f7eddd15b49b79f634a5cf"
 dependencies = [
  "ledger-apdu",
  "ledger-transport",
@@ -1489,7 +1489,7 @@ dependencies = [
  "futures 0.3.5",
  "hex",
  "hmac 0.8.0",
- "ledger-kusama",
+ "ledger-substrate",
  "ledger-transport",
  "ledger-transport-hid",
  "ledger-zondax-generic",
@@ -2178,9 +2178,9 @@ dependencies = [
 
 [[package]]
 name = "paste"
-version = "0.1.17"
+version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "026c63fe245362be0322bfec5a9656d458d13f9cfb1785d1b38458b9968e8080"
+checksum = "45ca20c77d80be666aef2b45486da86238fabe33e38306bd3118fe4af33fa880"
 dependencies = [
  "paste-impl",
  "proc-macro-hack",
@@ -2188,9 +2188,9 @@ dependencies = [
 
 [[package]]
 name = "paste-impl"
-version = "0.1.17"
+version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b9281a268ec213237dcd2aa3c3d0f46681b04ced37c1616fd36567a9e6954b0"
+checksum = "d95a7db200b97ef370c8e6de0088252f7e0dfff7d047a28528e47456c0fc98b6"
 dependencies = [
  "proc-macro-hack",
 ]
@@ -2406,9 +2406,9 @@ dependencies = [
 
 [[package]]
 name = "protobuf"
-version = "2.14.0"
+version = "2.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e86d370532557ae7573551a1ec8235a0f8d6cb276c7c9e6aa490b511c447485"
+checksum = "3e2ccb6b8f7e175f2d2401e7a5988b0630000164d221262c4fe50ae729513202"
 
 [[package]]
 name = "quote"
@@ -2823,18 +2823,18 @@ checksum = "a0eddf2e8f50ced781f288c19f18621fa72a3779e3cb58dbf23b07469b0abeb4"
 
 [[package]]
 name = "serde"
-version = "1.0.112"
+version = "1.0.113"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "736aac72d1eafe8e5962d1d1c3d99b0df526015ba40915cb3c49d042e92ec243"
+checksum = "6135c78461981c79497158ef777264c51d9d0f4f3fc3a4d22b915900e42dac6a"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.112"
+version = "1.0.113"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf0343ce212ac0d3d6afd9391ac8e9c9efe06b533c8d33f660f6390cc4093f57"
+checksum = "93c5eaa17d0954cb481cdcfffe9d84fcfa7a1a9f2349271e678677be4c26ae31"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3677,9 +3677,9 @@ checksum = "502d53007c02d7605a05df1c1a73ee436952781653da5d0bf57ad608f66932c1"
 
 [[package]]
 name = "syn"
-version = "1.0.31"
+version = "1.0.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5304cfdf27365b7585c25d4af91b35016ed21ef88f17ced89c7093b43dba8b6"
+checksum = "a994520748611c17d163e81b6c4a4b13d11b7f63884362ab2efac3aa9cf16d00"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4258,7 +4258,7 @@ dependencies = [
 [[package]]
 name = "zx-bip44"
 version = "0.1.0"
-source = "git+https://github.com/Zondax/blockchain-tools-rs#6e5fc7977d44015e46a7a8396dae4cb9a8120b87"
+source = "git+https://github.com/Zondax/blockchain-tools-rs#3524b955bc10dda0c47908cd2e0b857cf83733ad"
 dependencies = [
  "byteorder",
  "thiserror",
