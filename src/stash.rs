@@ -16,23 +16,15 @@
 
 //! Stash commands
 
-use super::{parse_address, AccountId, AccountType, Error, LedgeracioPath, StructOpt};
+use super::{parse_address, parse_reward_destination, AccountId, AccountType, Error,
+            LedgeracioPath, StructOpt};
 use substrate_subxt::{balances::Balances,
                       sp_core::crypto::Ss58AddressFormat,
                       sp_runtime::traits::SignedExtension,
-                      staking::{LedgerStore, NominateCallExt, NominatorsStore, RewardDestination,
-                                SetPayeeCallExt, Staking},
+                      staking::{LedgerStore, NominateCallExt, RewardDestination, SetPayeeCallExt,
+                                Staking},
                       system::System,
                       Client, SignedExtra};
-
-fn parse_reward_destination(arg: &str) -> Result<RewardDestination, &'static str> {
-    Ok(match arg {
-        "Staked" => RewardDestination::Staked,
-        "Stash" => RewardDestination::Stash,
-        "Controller" => RewardDestination::Controller,
-        _ => return Err("bad reward destination ― must be Staked, Stash, or Controller"),
-    })
-}
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum Stash {

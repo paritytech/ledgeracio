@@ -105,22 +105,14 @@ impl LedgeracioPath {
             HARDENED | account_index,
         ])))
     }
-
-    /// Returns the account type of this derivation path.
-    pub fn account_type(&self) -> AccountType {
-        match (self.0).0[2] {
-            0 => AccountType::Stash,
-            1 => AccountType::Validator,
-            _ => unreachable!("account type was checked in Self::new()"),
-        }
-    }
-
-    /// Returns the index of this derivation path.
-    pub fn index(&self) -> u32 { (self.0).0[4] }
 }
 
 impl Clone for LedgeracioPath {
     fn clone(&self) -> Self { Self(BIP44Path((self.0).0)) }
+}
+
+impl std::fmt::Display for LedgeracioPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> { self.0.fmt(f) }
 }
 
 impl AsRef<[u32]> for LedgeracioPath {

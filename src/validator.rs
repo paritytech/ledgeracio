@@ -14,13 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{AccountId, AccountType, Error, LedgeracioPath, StructOpt};
+use super::{parse_reward_destination, AccountId, AccountType, Error, LedgeracioPath, StructOpt};
 use codec::{Decode, Encode};
 use substrate_subxt::{balances::Balances,
                       session::{Session, SetKeysCallExt},
                       sp_core::crypto::Ss58AddressFormat,
                       sp_runtime::{traits::SignedExtension, Perbill},
-                      staking::{LedgerStore, Staking, ValidateCallExt, ValidatorPrefs},
+                      staking::{LedgerStore, RewardDestination, SetPayeeCallExt, Staking,
+                                ValidateCallExt, ValidatorPrefs},
                       system::System,
                       Client, SessionKeys, SignedExtra};
 
@@ -35,6 +36,13 @@ pub(crate) enum Validator {
         index: u32,
         #[structopt(parse(try_from_str = parse_keys))]
         keys: SessionKeys,
+    },
+    /// Set payment target
+    #[structopt(name = "set-payee")]
+    SetPayee {
+        index: u32,
+        #[structopt(parse(try_from_str = parse_reward_destination))]
+        target: RewardDestination,
     },
 }
 
@@ -91,6 +99,11 @@ where
             let nominators = client.fetch(LedgerStore { controller }, None).await?;
             println!("Validator status: {:#?}", nominators);
             Ok(Default::default())
+        }
+        Validator::SetPayee { index, target } => {
+            let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
+            let signer = keystore.signer(path)?;
+            Ok(client.set_payee(&*signer, target).await?)
         }
     }
 }

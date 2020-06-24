@@ -24,6 +24,7 @@ mod softstore;
 mod stash;
 mod validator;
 
+use clap::arg_enum;
 use codec::Encode;
 use derivation::{AccountType, LedgeracioPath};
 use keys::KeyStore;
@@ -33,6 +34,7 @@ use std::fmt::Debug;
 use structopt::StructOpt;
 use substrate_subxt::{sp_core,
                       sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
+                      staking::RewardDestination,
                       ClientBuilder};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -78,8 +80,8 @@ struct Ledgeracio {
     #[structopt(short, long, default_value = "wss://kusama-rpc.polkadot.io")]
     host: String,
     /// Network
-    #[structopt(long, default_value = "polkadot")]
-    network: String,
+    #[structopt(long, default_value = "kusama")]
+    network: Network,
     /// Subcommand
     #[structopt(subcommand)]
     cmd: Command,
@@ -89,6 +91,16 @@ struct Ledgeracio {
 enum KeySource {
     /// Hardware device
     Hardware,
+}
+
+arg_enum! {
+    #[derive(Debug)]
+    enum Network {
+        // The Kusama (canary) network
+        Kusama,
+        // The Polkadot (live) network
+        Polkadot,
+    }
 }
 
 #[derive(StructOpt, Debug)]
@@ -103,6 +115,15 @@ enum Command {
 
 type Runtime = substrate_subxt::KusamaRuntime;
 
+fn parse_reward_destination(arg: &str) -> Result<RewardDestination, &'static str> {
+    Ok(match arg {
+        "Staked" => RewardDestination::Staked,
+        "Stash" => RewardDestination::Stash,
+        "Controller" => RewardDestination::Controller,
+        _ => return Err("bad reward destination ― must be Staked, Stash, or Controller"),
+    })
+}
+
 /// Parse an SS58 address
 pub fn parse_address<T: Ss58Codec>(arg: &str) -> Result<(T, u8), String> {
     Ss58Codec::from_string_with_version(arg)
@@ -112,7 +133,7 @@ pub fn parse_address<T: Ss58Codec>(arg: &str) -> Result<(T, u8), String> {
 
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    use std::{convert::TryFrom, fs::File, io::Read};
+    use std::{fs::File, io::Read};
     let Ledgeracio {
         dry_run,
         host,
@@ -120,8 +141,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         secret_file,
         cmd,
     } = Ledgeracio::from_args();
-    let network = Ss58AddressFormat::try_from(&*network)
-        .map_err(|()| format!("unsupported network {:?}", network))?;
+    let address_format = match network {
+        Network::Kusama => Ss58AddressFormat::KusamaAccount,
+        Network::Polkadot => Ss58AddressFormat::PolkadotAccount,
+    };
     let client = async { ClientBuilder::<Runtime>::new().set_url(host).build().await };
     let keystore: Box<dyn KeyStore<Runtime, _, _> + Send + Sync> = match secret_file {
         Some(input) => {
@@ -137,21 +160,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             };
             SoftKeyStore::new(&*seed)
         }
-        None => Box::new(hardstore::HardStore::new()?),
+        None => Box::new(hardstore::HardStore::new(network)?),
     };
     if dry_run {
         return Ok(())
     }
     match cmd {
-        Command::Stash(s) => stash::main(s, client.await?, network, &*keystore).await,
-        Command::Validator(v) => validator::main(v, client.await?, network, &*keystore).await,
+        Command::Stash(s) => stash::main(s, client.await?, address_format, &*keystore).await,
+        Command::Validator(v) => {
+            validator::main(v, client.await?, address_format, &*keystore).await
+        }
         Command::Address { index, t } => {
-            let path = LedgeracioPath::new(network, t, index)?;
+            let path = LedgeracioPath::new(address_format, t, index)?;
             let signer = keystore.signer(path)?;
             let account_id: &AccountId = signer.account_id();
             println!(
                 "{}",
-                <AccountId as Ss58Codec>::to_ss58check_with_version(account_id, network)
+                <AccountId as Ss58Codec>::to_ss58check_with_version(account_id, address_format)
             );
             return Ok(())
         }

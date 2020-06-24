@@ -38,11 +38,16 @@ pub struct HardStore {
 }
 
 impl HardStore {
-    pub fn new() -> Result<Self, crate::Error> {
+    pub(crate) fn new(network: super::Network) -> Result<Self, crate::Error> {
+        let transport = ledger_substrate::APDUTransport {
+            transport_wrapper: ledger::TransportNativeHID::new()?,
+        };
+        let app = match network {
+            super::Network::Polkadot => ledger_substrate::new_polkadot_app,
+            super::Network::Kusama => ledger_substrate::new_kusama_app,
+        }(transport);
         Ok(Self {
-            inner: Arc::new(Mutex::new(SubstrateApp::new(ledger_substrate::APDUTransport {
-                transport_wrapper: ledger::TransportNativeHID::new()?,
-            }, 0))),
+            inner: Arc::new(Mutex::new(app)),
         })
     }
 }
@@ -50,7 +55,6 @@ impl HardStore {
 struct HardSigner {
     app: Arc<Mutex<SubstrateApp>>,
     path: LedgeracioPath,
-    ss58: String,
     address: AccountId,
 }
 
@@ -78,20 +82,16 @@ where
                 Ok(e) => e,
                 Err(e) => {
                     eprintln!(
-                        "Failed to obtain a signer for path {:?}: {}.\n\nCheck that your Ledger \
+                        "Failed to obtain a signer for path {}: {}.\n\nCheck that your Ledger \
                          device is connected, and that you have the correct app\nopen for the \
-                         network you are using. ",
+                         network you are using.",
                         path, e
                     );
                     return Err(Box::new(e) as _)
                 }
             };
-            Ok(Box::new(HardSigner {
-                app,
-                ss58: ledger_address.ss58,
-                path,
-                address: ledger_address.public_key.into(),
-            })
+            let address = ledger_address.public_key.into();
+            Ok(Box::new(HardSigner { app, path, address })
                 as Box<dyn Signer<T, S, E> + Send + Sync + 'static>)
         };
         res
