@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Stash commands
+//! Nominator commands
 
 use super::{parse_address, parse_reward_destination, AccountId, AccountType, Error,
             LedgeracioPath, StructOpt};
@@ -27,7 +27,7 @@ use substrate_subxt::{balances::Balances,
                       Client, SignedExtra};
 
 #[derive(StructOpt, Debug)]
-pub(crate) enum Stash {
+pub(crate) enum Nominator {
     /// Show the specified stash controller
     Show { index: u32 },
     /// Show the status of all stash controllers
@@ -61,7 +61,7 @@ pub(crate) async fn main<
     S: codec::Encode + Send + Sync + 'static,
     E: SignedExtension + SignedExtra<T> + 'static,
 >(
-    cmd: Stash,
+    cmd: Nominator,
     client: Client<T, S, E>,
     network: Ss58AddressFormat,
     keystore: &dyn crate::keys::KeyStore<T, S, E>,
@@ -72,25 +72,36 @@ where
 {
     use std::convert::{TryFrom, TryInto};
     match cmd {
-        Stash::Status => unimplemented!("showing validator status"),
-        Stash::Show { index } => {
-            let path = LedgeracioPath::new(network, AccountType::Stash, index)?;
+        Nominator::Status => unimplemented!("showing validator status"),
+        Nominator::Show { index } => {
+            let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
             let signer = keystore.signer(path)?;
             let controller = signer.account_id().clone();
-            let stash = client
-                .fetch(LedgerStore { controller }, None)
+            match client
+                .fetch(
+                    LedgerStore {
+                        controller: controller.clone(),
+                    },
+                    None,
+                )
                 .await?
-                .unwrap();
-            println!(
-                "Stash account: {}\nStash balance: {}\nAmount at stake: {}",
-                stash.stash, stash.total, stash.active
-            );
+            {
+                Some(stash) => println!(
+                    "Nominator account: {}\nStash balance: {}\nAmount at stake: {}",
+                    stash.stash, stash.total, stash.active
+                ),
+                None => {
+                    return Err(
+                        format!("No nominator account found for controller {}", controller).into(),
+                    )
+                }
+            }
             Ok(Default::default())
         }
 
-        Stash::Claim { index } => unimplemented!("claiming payment for {:?}", index),
-        Stash::Nominate { index, set } => {
-            let path = LedgeracioPath::new(network, AccountType::Stash, index)?;
+        Nominator::Claim { index } => unimplemented!("claiming payment for {:?}", index),
+        Nominator::Nominate { index, set } => {
+            let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
             let signer = keystore.signer(path)?;
             if set.is_empty() {
                 return Err("Validator set cannot be empty".to_owned().into())
@@ -111,8 +122,8 @@ where
             }
             Ok(client.nominate(&*signer, new_set).await?)
         }
-        Stash::SetPayee { index, target } => {
-            let path = LedgeracioPath::new(network, AccountType::Stash, index)?;
+        Nominator::SetPayee { index, target } => {
+            let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
             let signer = keystore.signer(path)?;
             Ok(client.set_payee(&*signer, target).await?)
         }

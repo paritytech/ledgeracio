@@ -20,8 +20,8 @@ mod derivation;
 mod hardstore;
 mod keys;
 mod mock;
+mod nominator;
 mod softstore;
-mod stash;
 mod validator;
 
 use clap::arg_enum;
@@ -77,10 +77,10 @@ struct Ledgeracio {
     #[structopt(short = "n", long)]
     dry_run: bool,
     /// RPC host
-    #[structopt(short, long, default_value = "wss://kusama-rpc.polkadot.io")]
-    host: String,
+    #[structopt(short, long)]
+    host: Option<String>,
     /// Network
-    #[structopt(long, default_value = "kusama")]
+    #[structopt(long)]
     network: Network,
     /// Subcommand
     #[structopt(subcommand)]
@@ -105,8 +105,8 @@ arg_enum! {
 
 #[derive(StructOpt, Debug)]
 enum Command {
-    /// Stash operations
-    Stash(stash::Stash),
+    /// Nominator operations
+    Nominator(nominator::Nominator),
     /// Validator operations
     Validator(validator::Validator),
     /// Show a public key
@@ -145,6 +145,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         Network::Kusama => Ss58AddressFormat::KusamaAccount,
         Network::Polkadot => Ss58AddressFormat::PolkadotAccount,
     };
+    let host = host.unwrap_or_else(|| {
+        match network {
+            Network::Kusama => "wss://kusama-rpc.polkadot.io",
+            Network::Polkadot => "wss://rpc.polkadot.io",
+        }
+        .to_owned()
+    });
+
     let client = async { ClientBuilder::<Runtime>::new().set_url(host).build().await };
     let keystore: Box<dyn KeyStore<Runtime, _, _> + Send + Sync> = match secret_file {
         Some(input) => {
@@ -166,7 +174,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         return Ok(())
     }
     match cmd {
-        Command::Stash(s) => stash::main(s, client.await?, address_format, &*keystore).await,
+        Command::Nominator(s) => {
+            nominator::main(s, client.await?, address_format, &*keystore).await
+        }
         Command::Validator(v) => {
             validator::main(v, client.await?, address_format, &*keystore).await
         }

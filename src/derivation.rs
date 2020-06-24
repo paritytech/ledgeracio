@@ -23,12 +23,12 @@ use zx_bip44::BIP44Path;
 #[derive(Debug)]
 pub struct LedgeracioPath(BIP44Path);
 
-/// A type of account: stash or validator
+/// A type of account: nominator or validator
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 pub enum AccountType {
-    /// Stash account
-    Stash,
+    /// Nominator account
+    Nominator,
     /// Validator account
     Validator,
 }
@@ -38,9 +38,9 @@ impl std::str::FromStr for AccountType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "stash" => Ok(Self::Stash),
+            "nominator" => Ok(Self::Nominator),
             "validator" => Ok(Self::Validator),
-            _ => Err("Account type must be `stash` or `validator`"),
+            _ => Err("Account type must be `nominator` or `validator`"),
         }
     }
 }
