@@ -30,7 +30,7 @@ pub(crate) enum Validator {
     /// Show status of all Validator Controller keys
     Status { index: Option<u32> },
     /// Announce intention to validate
-    Announce { index: u32, commission: u32 },
+    Announce { index: u32, commission: Option<u32> },
     /// Replace a session key
     ReplaceKey {
         index: u32,
@@ -79,7 +79,7 @@ where
         Validator::Announce { index, commission } => {
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
             let prefs = ValidatorPrefs {
-                commission: Perbill::from_parts(commission),
+                commission: Perbill::from_parts(commission.unwrap_or(u32::max_value())),
             };
             let signer = keystore.signer(path)?;
             Ok(client.validate(&*signer, prefs).await?)
