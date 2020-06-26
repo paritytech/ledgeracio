@@ -19,7 +19,6 @@
 //! Performance should not be considered critical.
 
 use crate::{derivation::LedgeracioPath, Error};
-use codec::Decode;
 use std::{future::Future, pin::Pin};
 
 use substrate_subxt::{sp_core::crypto::AccountId32 as AccountId,

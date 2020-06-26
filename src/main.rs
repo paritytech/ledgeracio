@@ -37,7 +37,7 @@ use structopt::StructOpt;
 use substrate_subxt::{sp_core,
                       sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
                       staking::RewardDestination,
-                      ClientBuilder, Signer as _};
+                      ClientBuilder};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
@@ -173,7 +173,7 @@ async fn main() -> Result<(), Error> {
             SoftKeyStore::new(&*seed)
         }
         #[cfg(not(feature = "insecure_software_keystore"))]
-        Some(input) => {
+        Some(_input) => {
             return Err("insecure software keystore disabled at compile time"
                 .to_owned()
                 .into())
