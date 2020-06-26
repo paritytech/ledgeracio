@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
+#![cfg(feature = "insecure_software_keystore")]
 //! A software keystore.
 
 use super::{keys::Signed, AccountId, Encode, Error, KeyStore, LedgeracioPath};

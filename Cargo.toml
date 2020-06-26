@@ -33,3 +33,9 @@ codegen-units = 1
 panic = "abort"
 incremental = false
 opt-level = 3
+
+[patch.'https://github.com/Zondax/ledger-rs']
+ledger-transport-hid = { git = 'https://github.com/paritytech/ledger-rs', branch = 'sync' }
+ledger-transport = { git = 'https://github.com/paritytech/ledger-rs', branch = 'sync' }
+ledger-zondax-generic = { git = 'https://github.com/paritytech/ledger-rs', branch = 'sync' }
+ledger-apdu = { git = 'https://github.com/paritytech/ledger-rs', branch = 'sync' }

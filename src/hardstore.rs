@@ -20,17 +20,16 @@
 //! To use this keystore, a Ledger device with the Kusama and/or Polkadot apps
 //! installed must be connected, and the process must have permission to use it.
 
-use super::{keys::Signed, AccountId, Encode, Error, KeyStore, LedgeracioPath};
+use super::{Encode, Error, LedgeracioPath};
+use async_std::sync::Mutex;
 use codec::Decode;
-use futures::future::{err, ok};
 use ledger_substrate::SubstrateApp;
-use std::{convert::From,
-          sync::{Arc, Mutex}};
-use substrate_subxt::{sp_runtime::{generic::{SignedPayload, UncheckedExtrinsic},
-                                   traits::SignedExtension,
-                                   MultiSignature as Signature},
+use std::sync::Arc;
+use substrate_subxt::{sp_core::crypto::AccountId32 as AccountId,
+                      sp_runtime::{generic::{SignedPayload, UncheckedExtrinsic},
+                                   MultiSignature},
                       system::System,
-                      Encoded, SignedExtra, Signer};
+                      Encoded, Runtime, SignedExtra};
 
 /// Hardware keystore
 pub struct HardStore {
@@ -52,29 +51,19 @@ impl HardStore {
     }
 }
 
-struct HardSigner {
+#[derive(Clone)]
+pub struct HardSigner {
     app: Arc<Mutex<SubstrateApp>>,
     path: LedgeracioPath,
     address: AccountId,
 }
 
-impl<
-        T: System<AccountId = AccountId, Address = AccountId> + Send + Sync + 'static,
-        S: Encode + Decode + Send + Sync + From<Signature> + 'static,
-        E: SignedExtra<T> + 'static,
-    > KeyStore<T, S, E> for HardStore
-where
-    <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned:
-        Send + Sync + std::fmt::Debug,
-{
-    fn signer(
-        &self,
-        path: LedgeracioPath,
-    ) -> Result<Box<dyn Signer<T, S, E> + Send + Sync>, Error> {
+impl HardStore {
+    pub async fn signer(&self, path: LedgeracioPath) -> Result<HardSigner, Error> {
         let app = self.inner.clone();
         let ledger_address = {
-            let inner_app = app.lock().unwrap();
-            futures::executor::block_on(inner_app.get_address(path.as_ref(), false))
+            let inner_app = app.lock().await;
+            inner_app.get_address(path.as_ref(), false).await
         };
 
         let res = {
@@ -91,46 +80,48 @@ where
                 }
             };
             let address = ledger_address.public_key.into();
-            Ok(Box::new(HardSigner { app, path, address })
-                as Box<dyn Signer<T, S, E> + Send + Sync + 'static>)
+            Ok(HardSigner { app, path, address })
         };
         res
     }
 }
 
-impl<T, S, E> Signer<T, S, E> for HardSigner
-where
-    T: System<AccountId = AccountId, Address = AccountId> + Send + Sync + 'static,
-    S: Encode + Decode + Send + Sync + 'static,
-    E: SignedExtra<T> + 'static,
-    <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned:
-        Send + Sync + std::fmt::Debug,
-{
-    fn account_id(&self) -> &AccountId { &self.address }
+impl HardSigner {
+    pub fn account_id(&self) -> &AccountId { &self.address }
 
-    fn nonce(&self) -> Option<T::Index> { None }
-
-    fn sign(&self, extrinsic: SignedPayload<Encoded, E::Extra>) -> Signed<T, S, E> {
+    pub async fn sign<T: Runtime<Signature = MultiSignature>>(
+        &self,
+        extrinsic: SignedPayload<Encoded, <<T as Runtime>::Extra as SignedExtra<T>>::Extra>,
+    ) -> Result<
+        UncheckedExtrinsic<
+            <T as System>::Address,
+            Encoded,
+            MultiSignature,
+            <<T as Runtime>::Extra as SignedExtra<T>>::Extra,
+        >,
+        String,
+    >
+    where
+        T: System<AccountId = AccountId, Address = AccountId> + Send + Sync + 'static,
+    {
         let app = self.app.clone();
         let path = self.path.clone();
         let encoded = extrinsic.encode();
         let (call, extra, _) = extrinsic.deconstruct();
-        let signature =
-            match futures::executor::block_on(app.lock().unwrap().sign(path.as_ref(), &encoded)) {
-                Ok(e) => e,
-                Err(e) => return Box::pin(err(e.to_string())),
-            };
+        let app = app.lock().await;
+        let signature = match app.sign(path.as_ref(), &encoded).await {
+            Ok(e) => e,
+            Err(e) => return Err(e.to_string()),
+        };
         let signature = match Decode::decode(&mut &signature[..]) {
             Ok(e) => e,
-            Err(e) => return Box::pin(err(e.to_string())),
+            Err(e) => return Err(e.to_string()),
         };
-        let account_id = <Self as Signer<T, S, E>>::account_id(self);
-        let res = ok(UncheckedExtrinsic::new_signed(
+        Ok(UncheckedExtrinsic::new_signed(
             call,
-            account_id.clone().into(),
+            self.address.clone().into(),
             signature,
             extra,
-        ));
-        Box::pin(res)
+        ))
     }
 }

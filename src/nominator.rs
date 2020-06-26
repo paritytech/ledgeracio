@@ -16,15 +16,14 @@
 
 //! Nominator commands
 
-use super::{parse_address, parse_reward_destination, AccountId, AccountType, Error,
-            LedgeracioPath, StructOpt};
+use super::{parse_address, parse_reward_destination, AccountType, Error, LedgeracioPath, StructOpt};
 use substrate_subxt::{balances::Balances,
-                      sp_core::crypto::Ss58AddressFormat,
-                      sp_runtime::traits::SignedExtension,
+                      sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat},
+                      sp_runtime::{traits::SignedExtension, MultiSignature},
                       staking::{LedgerStore, NominateCallExt, RewardDestination, SetPayeeCallExt,
                                 Staking},
                       system::System,
-                      Client, SignedExtra};
+                      Client, Runtime, SignedExtra};
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum Nominator {
@@ -51,23 +50,23 @@ pub(crate) enum Nominator {
 }
 
 pub(crate) async fn main<
-    T: System<AccountId = AccountId, Address = AccountId>
+    T: System<AccountId = ::substrate_subxt::sp_core::crypto::AccountId32, Address = AccountId>
+        + substrate_subxt::Runtime<Signature = MultiSignature>
         + Balances
         + Send
         + Sync
         + Staking
         + std::fmt::Debug
         + 'static,
-    S: codec::Encode + Send + Sync + 'static,
-    E: SignedExtension + SignedExtra<T> + 'static,
 >(
     cmd: Nominator,
-    client: Client<T, S, E>,
+    client: Client<T>,
     network: Ss58AddressFormat,
-    keystore: &dyn crate::keys::KeyStore<T, S, E>,
+    keystore: &crate::keys::KeyStore,
 ) -> Result<T::Hash, Error>
 where
-    <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    <<<T as Runtime>::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned:
+        Send + Sync,
     <T as Balances>::Balance: std::fmt::Display,
 {
     use std::convert::{TryFrom, TryInto};
@@ -75,8 +74,8 @@ where
         Nominator::Status => unimplemented!("showing validator status"),
         Nominator::Show { index } => {
             let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
-            let signer = keystore.signer(path)?;
-            let controller = signer.account_id().clone();
+            let signer = keystore.signer(path).await?;
+            let controller: &AccountId = ::substrate_subxt::Signer::<T>::account_id(&signer);
             match client
                 .fetch(
                     LedgerStore {
@@ -102,7 +101,7 @@ where
         Nominator::Claim { index } => unimplemented!("claiming payment for {:?}", index),
         Nominator::Nominate { index, set } => {
             let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
-            let signer = keystore.signer(path)?;
+            let signer = keystore.signer(path).await?;
             if set.is_empty() {
                 return Err("Validator set cannot be empty".to_owned().into())
             }
@@ -120,12 +119,12 @@ where
                 }
                 new_set.push(address)
             }
-            Ok(client.nominate(&*signer, new_set).await?)
+            Ok(client.nominate(&signer, new_set).await?)
         }
         Nominator::SetPayee { index, target } => {
             let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
-            let signer = keystore.signer(path)?;
-            Ok(client.set_payee(&*signer, target).await?)
+            let signer = keystore.signer(path).await?;
+            Ok(client.set_payee(&signer, target).await?)
         }
     }
 }

@@ -15,15 +15,15 @@
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::{parse_reward_destination, AccountId, AccountType, Error, LedgeracioPath, StructOpt};
-use codec::{Decode, Encode};
+use codec::Decode;
 use substrate_subxt::{balances::Balances,
                       session::{Session, SetKeysCallExt},
                       sp_core::crypto::Ss58AddressFormat,
-                      sp_runtime::{traits::SignedExtension, Perbill},
+                      sp_runtime::{traits::SignedExtension, MultiSignature, Perbill},
                       staking::{LedgerStore, RewardDestination, SetPayeeCallExt, Staking,
                                 ValidateCallExt, ValidatorPrefs},
                       system::System,
-                      Client, SessionKeys, SignedExtra};
+                      Client, Runtime, SessionKeys, SignedExtra};
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum Validator {
@@ -56,7 +56,8 @@ fn parse_keys(buffer: &str) -> Result<SessionKeys, Error> {
 }
 
 pub(crate) async fn main<
-    T: System<AccountId = AccountId>
+    T: System<AccountId = AccountId, Address = AccountId>
+        + substrate_subxt::Runtime<Signature = MultiSignature>
         + Balances
         + Send
         + Sync
@@ -64,16 +65,15 @@ pub(crate) async fn main<
         + 'static
         + Session<Keys = SessionKeys>
         + std::fmt::Debug,
-    S: Encode + Send + Sync + 'static,
-    E: SignedExtension + SignedExtra<T> + 'static,
 >(
     cmd: Validator,
-    client: Client<T, S, E>,
+    client: Client<T>,
     network: Ss58AddressFormat,
-    keystore: &(dyn crate::keys::KeyStore<T, S, E> + Send + Sync),
+    keystore: &super::keys::KeyStore,
 ) -> Result<T::Hash, Error>
 where
-    <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    <<<T as Runtime>::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned:
+        Send + Sync,
 {
     match cmd {
         Validator::Announce { index, commission } => {
@@ -81,13 +81,13 @@ where
             let prefs = ValidatorPrefs {
                 commission: Perbill::from_parts(commission.unwrap_or(u32::max_value())),
             };
-            let signer = keystore.signer(path)?;
-            Ok(client.validate(&*signer, prefs).await?)
+            let signer = keystore.signer(path).await?;
+            Ok(client.validate(&signer, prefs).await?)
         }
         Validator::ReplaceKey { index, keys } => {
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
-            let signer = keystore.signer(path)?;
-            Ok(client.set_keys(&*signer, keys, vec![]).await?)
+            let signer = keystore.signer(path).await?;
+            Ok(client.set_keys(&signer, keys, vec![]).await?)
         }
         Validator::Status { index } => {
             let path = LedgeracioPath::new(
@@ -95,15 +95,16 @@ where
                 AccountType::Validator,
                 index.expect("account enumeration not implemented"),
             )?;
-            let controller: AccountId = keystore.signer(path)?.account_id().clone();
+            let signer = keystore.signer(path).await?;
+            let controller = ::substrate_subxt::Signer::<T>::account_id(&signer).clone();
             let nominators = client.fetch(LedgerStore { controller }, None).await?;
             println!("Validator status: {:#?}", nominators);
             Ok(Default::default())
         }
         Validator::SetPayee { index, target } => {
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
-            let signer = keystore.signer(path)?;
-            Ok(client.set_payee(&*signer, target).await?)
+            let signer = keystore.signer(path).await?;
+            Ok(client.set_payee(&signer, target).await?)
         }
     }
 }

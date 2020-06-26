@@ -28,6 +28,8 @@ use clap::arg_enum;
 use codec::Encode;
 use derivation::{AccountType, LedgeracioPath};
 use keys::KeyStore;
+
+#[cfg(feature = "insecure_software_keystore")]
 use softstore::SoftKeyStore;
 use sp_core::crypto::AccountId32 as AccountId;
 use std::fmt::Debug;
@@ -35,7 +37,7 @@ use structopt::StructOpt;
 use substrate_subxt::{sp_core,
                       sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
                       staking::RewardDestination,
-                      ClientBuilder};
+                      ClientBuilder, Signer as _};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
@@ -132,7 +134,8 @@ pub fn parse_address<T: Ss58Codec>(arg: &str) -> Result<(T, u8), String> {
 }
 
 #[async_std::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn main() -> Result<(), Error> {
+    #[cfg(feature = "insecure_software_keystore")]
     use std::{fs::File, io::Read};
     let Ledgeracio {
         dry_run,
@@ -154,7 +157,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     });
 
     let client = async { ClientBuilder::<Runtime>::new().set_url(host).build().await };
-    let keystore: Box<dyn KeyStore<Runtime, _, _> + Send + Sync> = match secret_file {
+    let keystore: KeyStore = match secret_file {
+        #[cfg(feature = "insecure_software_keystore")]
         Some(input) => {
             let mut fh = File::open(input)?;
             let mut v = vec![];
@@ -168,26 +172,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             };
             SoftKeyStore::new(&*seed)
         }
-        None => Box::new(hardstore::HardStore::new(network)?),
+        #[cfg(not(feature = "insecure_software_keystore"))]
+        Some(input) => {
+            return Err("insecure software keystore disabled at compile time"
+                .to_owned()
+                .into())
+        }
+        None => keys::KeyStore::Hard(hardstore::HardStore::new(network)?),
     };
     if dry_run {
         return Ok(())
     }
     match cmd {
-        Command::Nominator(s) => {
-            nominator::main(s, client.await?, address_format, &*keystore).await
-        }
-        Command::Validator(v) => {
-            validator::main(v, client.await?, address_format, &*keystore).await
-        }
+        Command::Nominator(s) => nominator::main(s, client.await?, address_format, &keystore).await,
+        Command::Validator(v) => validator::main(v, client.await?, address_format, &keystore).await,
         Command::Address { index, t } => {
             let path = LedgeracioPath::new(address_format, t, index)?;
-            let signer = keystore.signer(path)?;
+            let signer = keystore.signer(path).await?;
             let account_id: &AccountId = signer.account_id();
-            println!(
-                "{}",
-                <AccountId as Ss58Codec>::to_ss58check_with_version(account_id, address_format)
-            );
+            println!("{}", account_id.to_ss58check_with_version(address_format));
             return Ok(())
         }
     }?;
