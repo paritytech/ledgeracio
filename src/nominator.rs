@@ -17,20 +17,15 @@
 //! Nominator commands
 
 use super::{parse_address, parse_reward_destination, AccountType, Error, LedgeracioPath, StructOpt};
-use substrate_subxt::{balances::Balances,
-                      sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat},
-                      sp_runtime::{traits::SignedExtension, MultiSignature},
-                      staking::{LedgerStore, NominateCallExt, RewardDestination, SetPayeeCallExt,
-                                Staking},
-                      system::System,
-                      Client, Runtime, SignedExtra};
+use substrate_subxt::{sp_core::{crypto::{AccountId32 as AccountId, Ss58AddressFormat},
+                                H256},
+                      staking::{LedgerStore, NominateCallExt, RewardDestination, SetPayeeCallExt},
+                      Client, KusamaRuntime};
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum Nominator {
-    /// Show the specified stash controller
-    Show { index: u32 },
-    /// Show the status of all stash controllers
-    Status,
+    /// Show the specified stash controller, or all if none is specified.
+    Show { index: Option<u32> },
     /// Claim a validation payout
     Claim { index: Option<u32> },
     /// Nominate a new validator set
@@ -49,50 +44,44 @@ pub(crate) enum Nominator {
     },
 }
 
-pub(crate) async fn main<
-    T: System<AccountId = ::substrate_subxt::sp_core::crypto::AccountId32, Address = AccountId>
-        + substrate_subxt::Runtime<Signature = MultiSignature>
-        + Balances
-        + Send
-        + Sync
-        + Staking
-        + std::fmt::Debug
-        + 'static,
->(
+pub(crate) async fn main(
     cmd: Nominator,
-    client: Client<T>,
+    client: Client<KusamaRuntime>,
     network: Ss58AddressFormat,
     keystore: &crate::keys::KeyStore,
-) -> Result<T::Hash, Error>
-where
-    <<<T as Runtime>::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned:
-        Send + Sync,
-    <T as Balances>::Balance: std::fmt::Display,
-{
+) -> Result<H256, Error> {
     use std::convert::{TryFrom, TryInto};
     match cmd {
-        Nominator::Status => unimplemented!("showing validator status"),
         Nominator::Show { index } => {
-            let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
-            let signer = keystore.signer(path).await?;
-            let controller: &AccountId = ::substrate_subxt::Signer::<T>::account_id(&signer);
-            match client
-                .fetch(
-                    LedgerStore {
-                        controller: controller.clone(),
-                    },
-                    None,
-                )
-                .await?
-            {
-                Some(stash) => println!(
-                    "Nominator account: {}\nStash balance: {}\nAmount at stake: {}",
-                    stash.stash, stash.total, stash.active
-                ),
-                None => {
-                    return Err(
-                        format!("No nominator account found for controller {}", controller).into(),
+            let nominators = crate::common::fetch_validators(
+                &client,
+                network,
+                AccountType::Nominator,
+                keystore,
+                index,
+            )
+            .await?;
+            for controller in nominators {
+                match client
+                    .fetch(
+                        LedgerStore {
+                            controller: controller.clone(),
+                        },
+                        None,
                     )
+                    .await?
+                {
+                    Some(stash) => println!(
+                        "Nominator account: {}\nStash balance: {}\nAmount at stake: {}",
+                        stash.stash, stash.total, stash.active
+                    ),
+                    None => {
+                        return Err(format!(
+                            "No nominator account found for controller {}",
+                            controller
+                        )
+                        .into())
+                    }
                 }
             }
             Ok(Default::default())
