@@ -16,6 +16,7 @@
 
 //! The main binary of Ledgeracio
 
+mod common;
 mod derivation;
 mod hardstore;
 mod keys;

@@ -14,16 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{parse_reward_destination, AccountId, AccountType, Error, LedgeracioPath, StructOpt};
+use super::{parse_reward_destination, AccountType, Error, LedgeracioPath, StructOpt};
 use codec::Decode;
-use substrate_subxt::{balances::Balances,
-                      session::{Session, SetKeysCallExt},
+use substrate_subxt::{session::SetKeysCallExt,
                       sp_core::crypto::Ss58AddressFormat,
-                      sp_runtime::{traits::SignedExtension, MultiSignature, Perbill},
-                      staking::{LedgerStore, RewardDestination, SetPayeeCallExt, Staking,
-                                ValidateCallExt, ValidatorPrefs},
+                      sp_runtime::Perbill,
+                      staking::{LedgerStore, RewardDestination, SetPayeeCallExt, ValidateCallExt,
+                                ValidatorPrefs},
                       system::System,
-                      Client, Runtime, SessionKeys, SignedExtra};
+                      Client, KusamaRuntime, SessionKeys};
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum Validator {
@@ -55,26 +54,12 @@ fn parse_keys(buffer: &str) -> Result<SessionKeys, Error> {
     Decode::decode(&mut &*bytes).map_err(|e| Box::new(e) as _)
 }
 
-pub(crate) async fn main<
-    T: System<AccountId = AccountId, Address = AccountId>
-        + substrate_subxt::Runtime<Signature = MultiSignature>
-        + Balances
-        + Send
-        + Sync
-        + Staking
-        + 'static
-        + Session<Keys = SessionKeys>
-        + std::fmt::Debug,
->(
+pub(crate) async fn main(
     cmd: Validator,
-    client: Client<T>,
+    client: Client<KusamaRuntime>,
     network: Ss58AddressFormat,
     keystore: &super::keys::KeyStore,
-) -> Result<T::Hash, Error>
-where
-    <<<T as Runtime>::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned:
-        Send + Sync,
-{
+) -> Result<<KusamaRuntime as System>::Hash, Error> {
     match cmd {
         Validator::Announce { index, commission } => {
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
@@ -90,15 +75,18 @@ where
             Ok(client.set_keys(&signer, keys, vec![]).await?)
         }
         Validator::Status { index } => {
-            let path = LedgeracioPath::new(
+            let validators = crate::common::fetch_validators(
+                &client,
                 network,
                 AccountType::Validator,
-                index.expect("account enumeration not implemented"),
-            )?;
-            let signer = keystore.signer(path).await?;
-            let controller = ::substrate_subxt::Signer::<T>::account_id(&signer).clone();
-            let nominators = client.fetch(LedgerStore { controller }, None).await?;
-            println!("Validator status: {:#?}", nominators);
+                keystore,
+                index,
+            )
+            .await?;
+            for controller in validators {
+                let validators = client.fetch(LedgerStore { controller }, None).await?;
+                println!("Validator status: {:#?}", validators);
+            }
             Ok(Default::default())
         }
         Validator::SetPayee { index, target } => {
