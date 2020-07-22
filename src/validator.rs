@@ -43,6 +43,8 @@ pub(crate) enum Validator {
         #[structopt(parse(try_from_str = parse_reward_destination))]
         target: RewardDestination,
     },
+    /// Display the address of the given index
+    Address { index: u32 },
 }
 
 fn parse_keys(buffer: &str) -> Result<SessionKeys, Error> {
@@ -93,6 +95,10 @@ pub(crate) async fn main(
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
             let signer = keystore.signer(path).await?;
             Ok(client.set_payee(&signer, target).await?)
+        }
+        Validator::Address { index } => {
+            crate::display_path(AccountType::Validator, keystore, network, index).await?;
+            Ok(Default::default())
         }
     }
 }

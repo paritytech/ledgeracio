@@ -21,7 +21,6 @@
 //! installed must be connected, and the process must have permission to use it.
 
 use super::{Encode, Error, LedgeracioPath};
-use async_std::sync::Mutex;
 use codec::Decode;
 use ledger_substrate::SubstrateApp;
 use std::sync::Arc;
@@ -33,7 +32,7 @@ use substrate_subxt::{sp_core::crypto::AccountId32 as AccountId,
 
 /// Hardware keystore
 pub struct HardStore {
-    inner: Arc<Mutex<SubstrateApp>>,
+    inner: Arc<SubstrateApp>,
 }
 
 impl HardStore {
@@ -46,14 +45,14 @@ impl HardStore {
             super::Network::Kusama => ledger_substrate::new_kusama_app,
         }(transport);
         Ok(Self {
-            inner: Arc::new(Mutex::new(app)),
+            inner: Arc::new(app),
         })
     }
 }
 
 #[derive(Clone)]
 pub struct HardSigner {
-    app: Arc<Mutex<SubstrateApp>>,
+    app: Arc<SubstrateApp>,
     path: LedgeracioPath,
     address: AccountId,
 }
@@ -61,10 +60,7 @@ pub struct HardSigner {
 impl HardStore {
     pub async fn signer(&self, path: LedgeracioPath) -> Result<HardSigner, Error> {
         let app = self.inner.clone();
-        let ledger_address = {
-            let inner_app = app.lock().await;
-            inner_app.get_address(path.as_ref(), false).await
-        };
+        let ledger_address = app.get_address(path.as_ref(), false).await;
 
         let res = {
             let ledger_address = match ledger_address {
@@ -83,6 +79,17 @@ impl HardStore {
             Ok(HardSigner { app, path, address })
         };
         res
+    }
+
+    pub async fn set_pubkey(&self, key: &'_ [u8; 32]) -> Result<(), Error> {
+        self.inner
+            .allowlist_set_pubkey(key)
+            .await
+            .map_err(From::from)
+    }
+
+    pub async fn get_pubkey(&self) -> Result<[u8; 32], Error> {
+        self.inner.allowlist_get_pubkey().await.map_err(From::from)
     }
 }
 
@@ -108,7 +115,6 @@ impl HardSigner {
         let path = self.path.clone();
         let encoded = extrinsic.encode();
         let (call, extra, _) = extrinsic.deconstruct();
-        let app = app.lock().await;
         let signature = match app.sign(path.as_ref(), &encoded).await {
             Ok(e) => e,
             Err(e) => return Err(e.to_string()),

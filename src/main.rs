@@ -16,6 +16,7 @@
 
 //! The main binary of Ledgeracio
 
+mod approved_validators;
 mod common;
 mod derivation;
 mod hardstore;
@@ -90,12 +91,6 @@ struct Ledgeracio {
     cmd: Command,
 }
 
-#[derive(StructOpt, Debug)]
-enum KeySource {
-    /// Hardware device
-    Hardware,
-}
-
 arg_enum! {
     #[derive(Debug)]
     enum Network {
@@ -106,14 +101,29 @@ arg_enum! {
     }
 }
 
+async fn display_path(
+    account_type: AccountType,
+    keystore: &KeyStore,
+    network: Ss58AddressFormat,
+    index: u32,
+) -> Result<(), Error> {
+    let path = LedgeracioPath::new(network, account_type, index)?;
+    let signer = keystore.signer(path).await?;
+    let account_id: &AccountId = signer.account_id();
+    Ok(print!(
+        "{}\n",
+        account_id.to_ss58check_with_version(network)
+    ))
+}
+
 #[derive(StructOpt, Debug)]
 enum Command {
     /// Nominator operations
     Nominator(nominator::Nominator),
     /// Validator operations
     Validator(validator::Validator),
-    /// Show a public key
-    Address { t: AccountType, index: u32 },
+    /// Allowlist operations
+    Allowlist(approved_validators::ACL),
 }
 
 type Runtime = substrate_subxt::KusamaRuntime;
@@ -185,14 +195,23 @@ async fn main() -> Result<(), Error> {
         return Ok(())
     }
     match cmd {
-        Command::Nominator(s) => nominator::main(s, client.await?, address_format, &keystore).await,
-        Command::Validator(v) => validator::main(v, client.await?, address_format, &keystore).await,
-        Command::Address { index, t } => {
-            let path = LedgeracioPath::new(address_format, t, index)?;
-            let signer = keystore.signer(path).await?;
-            let account_id: &AccountId = signer.account_id();
-            println!("{}", account_id.to_ss58check_with_version(address_format));
-            return Ok(())
+        Command::Nominator(s) => nominator::main(s, client.await?, address_format, &keystore)
+            .await
+            .map(drop),
+        Command::Validator(v) => validator::main(v, client.await?, address_format, &keystore)
+            .await
+            .map(drop),
+        Command::Allowlist(l) => {
+            let hardware = match keystore {
+                #[cfg(feature = "insecure_software_keystore")]
+                KeyStore::Soft(_) => {
+                    return Err("Cannot use an allowlist with a software keystore"
+                        .to_owned()
+                        .into())
+                }
+                KeyStore::Hard(h) => h,
+            };
+            approved_validators::main(l, hardware).await
         }
     }?;
     Ok(())

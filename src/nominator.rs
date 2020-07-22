@@ -42,6 +42,8 @@ pub(crate) enum Nominator {
         #[structopt(parse(try_from_str = parse_reward_destination))]
         target: RewardDestination,
     },
+    /// Display the address of the given index
+    Address { index: u32 },
 }
 
 pub(crate) async fn main(
@@ -114,6 +116,10 @@ pub(crate) async fn main(
             let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
             let signer = keystore.signer(path).await?;
             Ok(client.set_payee(&signer, target).await?)
+        }
+        Nominator::Address { index } => {
+            crate::display_path(AccountType::Nominator, keystore, network, index).await?;
+            Ok(Default::default())
         }
     }
 }
