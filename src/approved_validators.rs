@@ -1,10 +1,10 @@
 // Copyright 2020 Parity Technologies (UK) Ltd.
 // This file is part of ledgeracio.
 //
-// ledgeracio is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// ledgeracio is free software: you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, either version 3 of the License, or (at your option) any later
+// version.
 //
 // ledgeracio is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -44,6 +44,9 @@ pub(crate) async fn main(acl: ACL, hardware: HardStore) -> Result<(), Error> {
             Ok(())
         }
         ACL::SetKey { key } => hardware.set_pubkey(&key).await,
-        ACL::Upload { .. } => unimplemented!(),
+        ACL::Upload { path } => {
+            let allowlist = std::fs::read(path)?;
+            hardware.allowlist_upload(&allowlist).await
+        }
     }
 }

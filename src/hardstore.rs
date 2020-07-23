@@ -88,6 +88,13 @@ impl HardStore {
             .map_err(From::from)
     }
 
+    pub async fn allowlist_upload(&self, allowlist: &[u8]) -> Result<(), Error> {
+        self.inner
+            .allowlist_upload(allowlist)
+            .await
+            .map_err(From::from)
+    }
+
     pub async fn get_pubkey(&self) -> Result<[u8; 32], Error> {
         self.inner.allowlist_get_pubkey().await.map_err(From::from)
     }
