@@ -16,10 +16,7 @@
 
 //! Routines for handling approved validators
 
-use super::{hardstore::HardStore, parse_reward_destination, AccountType, Error, LedgeracioPath,
-            StructOpt};
-use codec::Decode;
-use std::future::Future;
+use super::{hardstore::HardStore, Error, StructOpt};
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum ACL {

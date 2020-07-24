@@ -17,6 +17,7 @@
 //! Nominator commands
 
 use super::{parse_address, parse_reward_destination, AccountType, Error, LedgeracioPath, StructOpt};
+use core::{future::Future, pin::Pin};
 use substrate_subxt::{sp_core::{crypto::{AccountId32 as AccountId, Ss58AddressFormat},
                                 H256},
                       staking::{LedgerStore, NominateCallExt, RewardDestination, SetPayeeCallExt},
@@ -48,13 +49,14 @@ pub(crate) enum Nominator {
 
 pub(crate) async fn main(
     cmd: Nominator,
-    client: Client<KusamaRuntime>,
+    client: Pin<Box<dyn Future<Output = Result<Client<KusamaRuntime>, Error>>>>,
     network: Ss58AddressFormat,
     keystore: &crate::keys::KeyStore,
 ) -> Result<H256, Error> {
     use std::convert::{TryFrom, TryInto};
     match cmd {
         Nominator::Show { index } => {
+            let client = client.await?;
             let nominators = crate::common::fetch_validators(
                 &client,
                 network,
@@ -110,12 +112,12 @@ pub(crate) async fn main(
                 }
                 new_set.push(address)
             }
-            Ok(client.nominate(&signer, new_set).await?)
+            Ok(client.await?.nominate(&signer, new_set).await?)
         }
         Nominator::SetPayee { index, target } => {
             let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
             let signer = keystore.signer(path).await?;
-            Ok(client.set_payee(&signer, target).await?)
+            Ok(client.await?.set_payee(&signer, target).await?)
         }
         Nominator::Address { index } => {
             crate::display_path(AccountType::Nominator, keystore, network, index).await?;

@@ -16,6 +16,7 @@
 
 use super::{parse_reward_destination, AccountType, Error, LedgeracioPath, StructOpt};
 use codec::Decode;
+use core::{future::Future, pin::Pin};
 use substrate_subxt::{session::SetKeysCallExt,
                       sp_core::crypto::Ss58AddressFormat,
                       sp_runtime::Perbill,
@@ -58,7 +59,7 @@ fn parse_keys(buffer: &str) -> Result<SessionKeys, Error> {
 
 pub(crate) async fn main(
     cmd: Validator,
-    client: Client<KusamaRuntime>,
+    client: Pin<Box<dyn Future<Output = Result<Client<KusamaRuntime>, Error>>>>,
     network: Ss58AddressFormat,
     keystore: &super::keys::KeyStore,
 ) -> Result<<KusamaRuntime as System>::Hash, Error> {
@@ -69,14 +70,15 @@ pub(crate) async fn main(
                 commission: Perbill::from_parts(commission.unwrap_or(u32::max_value())),
             };
             let signer = keystore.signer(path).await?;
-            Ok(client.validate(&signer, prefs).await?)
+            Ok(client.await?.validate(&signer, prefs).await?)
         }
         Validator::ReplaceKey { index, keys } => {
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
             let signer = keystore.signer(path).await?;
-            Ok(client.set_keys(&signer, keys, vec![]).await?)
+            Ok(client.await?.set_keys(&signer, keys, vec![]).await?)
         }
         Validator::Status { index } => {
+            let client = client.await?;
             let validators = crate::common::fetch_validators(
                 &client,
                 network,
@@ -94,7 +96,7 @@ pub(crate) async fn main(
         Validator::SetPayee { index, target } => {
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
             let signer = keystore.signer(path).await?;
-            Ok(client.set_payee(&signer, target).await?)
+            Ok(client.await?.set_payee(&signer, target).await?)
         }
         Validator::Address { index } => {
             crate::display_path(AccountType::Validator, keystore, network, index).await?;

@@ -29,17 +29,18 @@ mod validator;
 use clap::arg_enum;
 use codec::Encode;
 use derivation::{AccountType, LedgeracioPath};
+use futures::future::TryFutureExt;
 use keys::KeyStore;
 
 #[cfg(feature = "insecure_software_keystore")]
 use softstore::SoftKeyStore;
 use sp_core::crypto::AccountId32 as AccountId;
-use std::fmt::Debug;
+use std::{fmt::Debug, future::Future, pin::Pin};
 use structopt::StructOpt;
 use substrate_subxt::{sp_core,
                       sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
                       staking::RewardDestination,
-                      ClientBuilder};
+                      Client, ClientBuilder};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
@@ -107,11 +108,14 @@ async fn display_path(
     network: Ss58AddressFormat,
     index: u32,
 ) -> Result<(), Error> {
+    if index == 0 {
+        return Err("Index must not be zero".to_owned().into())
+    }
     let path = LedgeracioPath::new(network, account_type, index)?;
     let signer = keystore.signer(path).await?;
     let account_id: &AccountId = signer.account_id();
-    Ok(print!(
-        "{}\n",
+    Ok(println!(
+        "{}",
         account_id.to_ss58check_with_version(network)
     ))
 }
@@ -146,6 +150,7 @@ pub fn parse_address<T: Ss58Codec>(arg: &str) -> Result<(T, u8), String> {
 
 #[async_std::main]
 async fn main() -> Result<(), Error> {
+    env_logger::init();
     #[cfg(feature = "insecure_software_keystore")]
     use std::{fs::File, io::Read};
     let Ledgeracio {
@@ -167,7 +172,11 @@ async fn main() -> Result<(), Error> {
         .to_owned()
     });
 
-    let client = async { ClientBuilder::<Runtime>::new().set_url(host).build().await };
+    let client = ClientBuilder::<Runtime>::new()
+        .set_url(host)
+        .build()
+        .map_err(From::from);
+    let client: Pin<Box<dyn Future<Output = Result<Client<Runtime>, _>>>> = Box::pin(client);
     let keystore: KeyStore = match secret_file {
         #[cfg(feature = "insecure_software_keystore")]
         Some(input) => {
@@ -195,10 +204,10 @@ async fn main() -> Result<(), Error> {
         return Ok(())
     }
     match cmd {
-        Command::Nominator(s) => nominator::main(s, client.await?, address_format, &keystore)
+        Command::Nominator(s) => nominator::main(s, client, address_format, &keystore)
             .await
             .map(drop),
-        Command::Validator(v) => validator::main(v, client.await?, address_format, &keystore)
+        Command::Validator(v) => validator::main(v, client, address_format, &keystore)
             .await
             .map(drop),
         Command::Allowlist(l) => {

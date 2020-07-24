@@ -50,17 +50,10 @@ impl std::str::FromStr for AccountType {
 pub enum DerivationPathError {
     /// Unsupported network (not Polkadot or Kusama)
     #[error("Unsupported network {0:?}")]
-    UnsupportedNetwork(DebuggableFormat),
+    UnsupportedNetwork(Ss58AddressFormat),
     /// Index out of range (greater than `1u32 << 31`)
     #[error("Index too large (greater than 2**31): {0}")]
     IndexTooLarge(u32),
-}
-
-pub struct DebuggableFormat(Ss58AddressFormat);
-impl std::fmt::Debug for DebuggableFormat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str(&*String::from(self.0))
-    }
 }
 
 /// The MSB of indexes for hardened derivation paths
@@ -88,11 +81,7 @@ impl LedgeracioPath {
         let slip_0044_code = match network {
             Ss58AddressFormat::PolkadotAccount => POLKADOT,
             Ss58AddressFormat::KusamaAccount => KUSAMA,
-            bad_network => {
-                return Err(DerivationPathError::UnsupportedNetwork(DebuggableFormat(
-                    bad_network,
-                )))
-            }
+            bad_network => return Err(DerivationPathError::UnsupportedNetwork(bad_network)),
         };
         if account_index > HARDENED {
             return Err(DerivationPathError::IndexTooLarge(account_index))
