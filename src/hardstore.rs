@@ -23,7 +23,7 @@
 use super::{Encode, Error, LedgeracioPath};
 use codec::Decode;
 use ledger_substrate::SubstrateApp;
-use std::sync::Arc;
+use std::{future::Future, pin::Pin, sync::Arc};
 use substrate_subxt::{sp_core::crypto::AccountId32 as AccountId,
                       sp_runtime::{generic::{SignedPayload, UncheckedExtrinsic},
                                    MultiSignature},
@@ -34,6 +34,24 @@ use substrate_subxt::{sp_core::crypto::AccountId32 as AccountId,
 pub struct HardStore {
     inner: Arc<SubstrateApp>,
 }
+
+pub type Signed<T> = Pin<
+    Box<
+        dyn Future<
+                Output = Result<
+                    UncheckedExtrinsic<
+                        <T as System>::Address,
+                        Encoded,
+                        MultiSignature,
+                        <<T as Runtime>::Extra as SignedExtra<T>>::Extra,
+                    >,
+                    String,
+                >,
+            > + Send
+            + Sync
+            + 'static,
+    >,
+>;
 
 impl HardStore {
     pub(crate) fn new(network: super::Network) -> Result<Self, crate::Error> {
@@ -101,8 +119,6 @@ impl HardStore {
 }
 
 impl HardSigner {
-    pub fn account_id(&self) -> &AccountId { &self.address }
-
     pub async fn sign<T: Runtime<Signature = MultiSignature>>(
         &self,
         extrinsic: SignedPayload<Encoded, <<T as Runtime>::Extra as SignedExtra<T>>::Extra>,
@@ -136,5 +152,20 @@ impl HardSigner {
             signature,
             extra,
         ))
+    }
+}
+
+type T = crate::Runtime;
+impl substrate_subxt::Signer<substrate_subxt::KusamaRuntime> for HardSigner {
+    fn account_id(&self) -> &AccountId { &self.address }
+
+    fn nonce(&self) -> Option<<T as System>::Index> { None }
+
+    fn sign(
+        &self,
+        extrinsic: SignedPayload<Encoded, <<T as Runtime>::Extra as SignedExtra<T>>::Extra>,
+    ) -> Signed<T> {
+        let tmp = self.clone();
+        Box::pin(async move { tmp.sign::<T>(extrinsic).await })
     }
 }

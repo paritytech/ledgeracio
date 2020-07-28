@@ -61,7 +61,7 @@ pub(crate) async fn main(
     cmd: Validator,
     client: Pin<Box<dyn Future<Output = Result<Client<KusamaRuntime>, Error>>>>,
     network: Ss58AddressFormat,
-    keystore: &super::keys::KeyStore,
+    keystore: &super::HardStore,
 ) -> Result<<KusamaRuntime as System>::Hash, Error> {
     match cmd {
         Validator::Announce { index, commission } => {

@@ -51,7 +51,7 @@ pub(crate) async fn main(
     cmd: Nominator,
     client: Pin<Box<dyn Future<Output = Result<Client<KusamaRuntime>, Error>>>>,
     network: Ss58AddressFormat,
-    keystore: &crate::keys::KeyStore,
+    keystore: &crate::HardStore,
 ) -> Result<H256, Error> {
     use std::convert::{TryFrom, TryInto};
     match cmd {

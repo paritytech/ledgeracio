@@ -20,27 +20,23 @@ mod approved_validators;
 mod common;
 mod derivation;
 mod hardstore;
-mod keys;
 mod mock;
 mod nominator;
-mod softstore;
 mod validator;
 
 use clap::arg_enum;
 use codec::Encode;
 use derivation::{AccountType, LedgeracioPath};
 use futures::future::TryFutureExt;
-use keys::KeyStore;
+use hardstore::HardStore;
 
-#[cfg(feature = "insecure_software_keystore")]
-use softstore::SoftKeyStore;
 use sp_core::crypto::AccountId32 as AccountId;
 use std::{fmt::Debug, future::Future, pin::Pin};
 use structopt::StructOpt;
 use substrate_subxt::{sp_core,
                       sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
                       staking::RewardDestination,
-                      Client, ClientBuilder};
+                      Client, ClientBuilder, Signer};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
@@ -71,13 +67,6 @@ impl std::str::FromStr for OutputFormat {
 #[derive(Debug, StructOpt)]
 #[structopt(name = "Ledgeracio", about = "Ledger CLI for staking")]
 struct Ledgeracio {
-    /// A file containing the secret seed.
-    ///
-    /// By default, a secure hardware-backed keystore is used.  For testing and
-    /// debugging, you can pass a file containing the secret seed with this
-    /// flag.  This is less secure and should not be used in production.
-    #[structopt(parse(from_os_str), long)]
-    secret_file: Option<std::path::PathBuf>,
     /// Dry run.  Do not execute the operation.
     #[structopt(short = "n", long)]
     dry_run: bool,
@@ -104,7 +93,7 @@ arg_enum! {
 
 async fn display_path(
     account_type: AccountType,
-    keystore: &KeyStore,
+    keystore: &HardStore,
     network: Ss58AddressFormat,
     index: u32,
 ) -> Result<(), Error> {
@@ -112,7 +101,7 @@ async fn display_path(
         return Err("Index must not be zero".to_owned().into())
     }
     let path = LedgeracioPath::new(network, account_type, index)?;
-    let signer = keystore.signer(path).await?;
+    let signer: hardstore::HardSigner = keystore.signer(path).await?;
     let account_id: &AccountId = signer.account_id();
     Ok(println!(
         "{}",
@@ -151,13 +140,10 @@ pub fn parse_address<T: Ss58Codec>(arg: &str) -> Result<(T, u8), String> {
 #[async_std::main]
 async fn main() -> Result<(), Error> {
     env_logger::init();
-    #[cfg(feature = "insecure_software_keystore")]
-    use std::{fs::File, io::Read};
     let Ledgeracio {
         dry_run,
         host,
         network,
-        secret_file,
         cmd,
     } = Ledgeracio::from_args();
     let address_format = match network {
@@ -177,29 +163,7 @@ async fn main() -> Result<(), Error> {
         .build()
         .map_err(From::from);
     let client: Pin<Box<dyn Future<Output = Result<Client<Runtime>, _>>>> = Box::pin(client);
-    let keystore: KeyStore = match secret_file {
-        #[cfg(feature = "insecure_software_keystore")]
-        Some(input) => {
-            let mut fh = File::open(input)?;
-            let mut v = vec![];
-            let _size = fh.read_to_end(&mut v)?;
-            let seed = if v.starts_with(b"0x") {
-                hex::decode(&v[2..])?
-            } else {
-                let s: String = String::from_utf8(v)?;
-                let mnemonic = bip39::Mnemonic::from_phrase(&*s, bip39::Language::English)?;
-                bip39::Seed::new(&mnemonic, "").as_bytes().to_owned()
-            };
-            SoftKeyStore::new(&*seed)
-        }
-        #[cfg(not(feature = "insecure_software_keystore"))]
-        Some(_input) => {
-            return Err("insecure software keystore disabled at compile time"
-                .to_owned()
-                .into())
-        }
-        None => keys::KeyStore::Hard(hardstore::HardStore::new(network)?),
-    };
+    let keystore = hardstore::HardStore::new(network)?;
     if dry_run {
         return Ok(())
     }
@@ -210,18 +174,7 @@ async fn main() -> Result<(), Error> {
         Command::Validator(v) => validator::main(v, client, address_format, &keystore)
             .await
             .map(drop),
-        Command::Allowlist(l) => {
-            let hardware = match keystore {
-                #[cfg(feature = "insecure_software_keystore")]
-                KeyStore::Soft(_) => {
-                    return Err("Cannot use an allowlist with a software keystore"
-                        .to_owned()
-                        .into())
-                }
-                KeyStore::Hard(h) => h,
-            };
-            approved_validators::main(l, hardware).await
-        }
+        Command::Allowlist(l) => approved_validators::main(l, keystore).await,
     }?;
     Ok(())
 }

@@ -18,13 +18,13 @@
 
 use super::{AccountId, AccountType, Error, LedgeracioPath};
 use substrate_subxt::{sp_core::crypto::Ss58AddressFormat, system::AccountStoreExt, Client,
-                      KusamaRuntime};
+                      KusamaRuntime, Signer};
 
 pub(crate) async fn fetch_validators(
     client: &Client<KusamaRuntime>,
     network: Ss58AddressFormat,
     account_type: AccountType,
-    keystore: &super::keys::KeyStore,
+    keystore: &super::HardStore,
     index: Option<u32>,
 ) -> Result<Vec<AccountId>, Error> {
     let mut v = vec![];
