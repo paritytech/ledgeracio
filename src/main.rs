@@ -16,6 +16,7 @@
 
 //! The main binary of Ledgeracio
 
+#[cfg(feature = "allowlist")]
 mod approved_validators;
 mod common;
 mod derivation;
@@ -29,6 +30,9 @@ use codec::Encode;
 use derivation::{AccountType, LedgeracioPath};
 use futures::future::TryFutureExt;
 use hardstore::HardStore;
+
+#[cfg(not(unix))]
+compile_error!("Only *nix-like platforms are supported");
 
 use sp_core::crypto::AccountId32 as AccountId;
 use std::{fmt::Debug, future::Future, pin::Pin};
@@ -163,15 +167,15 @@ async fn main() -> Result<(), Error> {
         .build()
         .map_err(From::from);
     let client: Pin<Box<dyn Future<Output = Result<Client<Runtime>, _>>>> = Box::pin(client);
-    let keystore = hardstore::HardStore::new(network)?;
+    let keystore = || hardstore::HardStore::new(network);
     if dry_run {
         return Ok(())
     }
     match cmd {
-        Command::Nominator(s) => nominator::main(s, client, address_format, &keystore)
+        Command::Nominator(s) => nominator::main(s, client, address_format, &keystore()?)
             .await
             .map(drop),
-        Command::Validator(v) => validator::main(v, client, address_format, &keystore)
+        Command::Validator(v) => validator::main(v, client, address_format, &keystore()?)
             .await
             .map(drop),
         Command::Allowlist(l) => approved_validators::main(l, keystore).await,

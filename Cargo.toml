@@ -5,6 +5,11 @@ authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2018"
 license = "GPLv3+"
 
+[features]
+insecure_software_keystore = []
+allowlist = []
+default = ["allowlist"]
+
 [dependencies]
 substrate-subxt = { git = "https://github.com/paritytech/substrate-subxt", branch = "staking", default-features = true }
 structopt = { version = "0.3.15", default-features = true }
@@ -27,6 +32,8 @@ ledger-transport-hid = { git = "https://github.com/Zondax/ledger-rs" }
 clap = "2.33.1"
 log = "0.4.11"
 env_logger = "0.7.1"
+ed25519-dalek = "1.0.0-pre.4"
+rand = "0.7.3"
 
 [profile.release]
 lto = "fat"
