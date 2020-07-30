@@ -23,6 +23,7 @@ mod derivation;
 mod hardstore;
 mod mock;
 mod nominator;
+mod parser;
 mod validator;
 
 use clap::arg_enum;
