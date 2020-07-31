@@ -17,6 +17,7 @@
 //! Routines for handling approved validators
 
 use super::{Error, StructOpt};
+use crate::{AccountId, Ss58AddressFormat};
 use std::{os::unix::ffi::OsStrExt, path::PathBuf};
 
 #[derive(StructOpt, Debug)]
@@ -73,14 +74,17 @@ pub(crate) enum ACL {
         secret: PathBuf,
         /// The public key file.  Optional, but strongly recommended.
         #[structopt(short = "p", long = "public")]
-        public: PathBuf,
+        public: Option<PathBuf>,
+        /// The output file
+        #[structopt(short = "o", long = "output")]
+        output: PathBuf,
     },
 }
 
 fn write(buf: &[u8], path: &std::path::Path) -> std::io::Result<()> {
     use std::{fs::OpenOptions, io::Write, os::unix::fs::OpenOptionsExt};
     OpenOptions::new()
-        .mode(0o600)
+        .mode(0o400)
         .write(true)
         .create(true)
         .truncate(true)
@@ -91,6 +95,7 @@ fn write(buf: &[u8], path: &std::path::Path) -> std::io::Result<()> {
 pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
     acl: ACL,
     hardware: T,
+    network: Ss58AddressFormat,
 ) -> Result<(), Error> {
     use ed25519_dalek::{ExpandedSecretKey, Keypair, PublicKey};
 
@@ -132,6 +137,21 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             file,
             public,
             secret,
-        } => unimplemented!(),
+            output,
+        } => {
+            let file = std::io::BufReader::new(std::fs::File::open(file)?);
+            let public = match public {
+                None => None,
+                Some(public) => Some(ed25519_dalek::PublicKey::from_bytes(&*std::fs::read(
+                    public,
+                )?)?),
+            };
+            let secret: Vec<u8> = std::fs::read(secret)?;
+            let sk = (&ed25519_dalek::SecretKey::from_bytes(&*secret)?).into();
+            let signed =
+                crate::parser::parse::<_, AccountId>(file, network, public.as_ref(), Some(&sk))?;
+            std::fs::write(output, signed)?;
+            Ok(())
+        }
     }
 }

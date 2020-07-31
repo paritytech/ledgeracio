@@ -21,9 +21,10 @@ use std::{convert::TryFrom,
           io::{prelude::*, BufReader, Error, ErrorKind}};
 use substrate_subxt::sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat, Ss58Codec};
 
-fn parse<T: BufRead, U: Ss58Codec>(
+pub fn parse<T: BufRead, U: Ss58Codec>(
     reader: T,
     network: Ss58AddressFormat,
+    pk: Option<&PublicKey>,
     sk: Option<&ExpandedSecretKey>,
 ) -> std::io::Result<Vec<u8>> {
     let mut v = vec![0; 68];
@@ -51,7 +52,7 @@ fn parse<T: BufRead, U: Ss58Codec>(
         v.extend_from_slice(&[0u8; 64]);
         v[current_len..current_len + bytes.len()].copy_from_slice(bytes);
     }
-    let total_len_bytes = ((v.len() - 68) >> 6).to_le_bytes();
+    let total_len_bytes = u32::try_from((v.len() - 68) >> 6).unwrap().to_le_bytes();
     v[..4].copy_from_slice(&total_len_bytes);
     if let Some(sk) = sk {
         let digest = blake2b_simd::Params::new()
@@ -60,7 +61,11 @@ fn parse<T: BufRead, U: Ss58Codec>(
             .update(&total_len_bytes)
             .update(&v[68..])
             .finalize();
-        let pk = PublicKey::from(sk);
+        let mut dummy_option = None;
+        let pk = pk.unwrap_or_else(|| {
+            dummy_option = Some(PublicKey::from(sk));
+            dummy_option.as_ref().unwrap()
+        });
         let signature = sk.sign(&digest.as_bytes(), &pk);
         v[4..68].copy_from_slice(&signature.to_bytes()[..]);
     }

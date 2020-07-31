@@ -182,7 +182,7 @@ async fn main() -> Result<(), Error> {
         Command::Validator(v) => validator::main(v, client, address_format, &keystore()?)
             .await
             .map(drop),
-        Command::Allowlist(l) => approved_validators::main(l, keystore).await,
+        Command::Allowlist(l) => approved_validators::main(l, keystore, address_format).await,
     }?;
     Ok(())
 }
