@@ -1580,6 +1580,7 @@ name = "ledgeracio"
 version = "0.1.0"
 dependencies = [
  "async-std",
+ "blake2b_simd",
  "clap",
  "ed25519-bip32",
  "ed25519-dalek",

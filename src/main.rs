@@ -36,7 +36,10 @@ use hardstore::HardStore;
 compile_error!("Only *nix-like platforms are supported");
 
 use sp_core::crypto::AccountId32 as AccountId;
-use std::{fmt::Debug, future::Future, pin::Pin};
+use std::{convert::{TryFrom, TryInto},
+          fmt::Debug,
+          future::Future,
+          pin::Pin};
 use structopt::StructOpt;
 use substrate_subxt::{sp_core,
                       sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
@@ -182,4 +185,22 @@ async fn main() -> Result<(), Error> {
         Command::Allowlist(l) => approved_validators::main(l, keystore).await,
     }?;
     Ok(())
+}
+
+fn validate_network(
+    address: &str,
+    provided_network: u8,
+    network: Ss58AddressFormat,
+) -> Result<(), Error> {
+    if network != provided_network.try_into().unwrap() {
+        Err(format!(
+            "Network mismatch: address {} is for network {}, but you asked to use network {}",
+            address,
+            String::from(Ss58AddressFormat::try_from(provided_network).unwrap()),
+            String::from(Ss58AddressFormat::try_from(network).unwrap()),
+        )
+        .into())
+    } else {
+        Ok(())
+    }
 }
