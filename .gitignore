@@ -1,1 +1,12 @@
 /target
+
+# Ledgeracio keys and allowlists
+*.pub
+*.sec
+*.allowlist
+
+# Editor temporary files
+*~
+.#*
+\#*#
+*.sw[op]
