@@ -18,7 +18,10 @@
 
 use super::{Error, StructOpt};
 use crate::{AccountId, Ss58AddressFormat};
-use std::{os::unix::ffi::OsStrExt, path::PathBuf};
+use std::{fs::OpenOptions,
+          io::Write,
+          os::unix::{ffi::OsStrExt, fs::OpenOptionsExt},
+          path::PathBuf};
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum ACL {
@@ -88,14 +91,13 @@ pub(crate) enum ACL {
         /// The public key file.
         #[structopt(short = "p", long = "public")]
         public: PathBuf,
-        /* /// The output file
-         *  #[structopt(short = "o", long = "output")]
-         * output: PathBuf, */
+        /// The output file.  Defaults to stdout.
+        #[structopt(short = "o", long = "output")]
+        output: Option<PathBuf>,
     },
 }
 
 fn write(buf: &[u8], path: &std::path::Path) -> std::io::Result<()> {
-    use std::{fs::OpenOptions, io::Write, os::unix::fs::OpenOptionsExt};
     OpenOptions::new()
         .mode(0o400)
         .write(true)
@@ -166,11 +168,28 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             std::fs::write(output, signed)?;
             Ok(())
         }
-        ACL::Inspect { file, public } => {
+        ACL::Inspect {
+            file,
+            public,
+            output,
+        } => {
             let file = std::io::BufReader::new(std::fs::File::open(file)?);
             let pk = ed25519_dalek::PublicKey::from_bytes(&*std::fs::read(public)?)?;
+            let stdout = std::io::stdout();
+            let mut output = std::io::BufWriter::new(match output {
+                None => Box::new(stdout.lock()) as Box<dyn std::io::Write>,
+                Some(path) => Box::new(
+                    OpenOptions::new()
+                        .mode(0o600)
+                        .write(true)
+                        .create(true)
+                        .truncate(true)
+                        .open(path)?,
+                ),
+            });
+
             for i in crate::parser::inspect::<_, AccountId>(file, network, &pk)? {
-                println!("{}", i);
+                writeln!(output, "{}", i)?;
             }
             Ok(())
         }
