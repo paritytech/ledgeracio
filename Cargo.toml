@@ -32,7 +32,7 @@ ledger-transport-hid = { git = "https://github.com/Zondax/ledger-rs" }
 clap = "2.33.1"
 log = "0.4.11"
 env_logger = "0.7.1"
-ed25519-dalek = "1.0.0-pre.4"
+ed25519-dalek = "=1.0.0-pre.4"
 rand = "0.7.3"
 blake2b_simd = "0.5.10"
 

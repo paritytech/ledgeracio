@@ -18,7 +18,7 @@
 
 use ed25519_dalek::{ExpandedSecretKey, PublicKey};
 use std::{convert::TryFrom,
-          io::{prelude::*, BufReader, Error, ErrorKind}};
+          io::{prelude::*, Error, ErrorKind}};
 use substrate_subxt::sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat, Ss58Codec};
 
 pub fn parse<T: BufRead, U: Ss58Codec>(
@@ -70,6 +70,58 @@ pub fn parse<T: BufRead, U: Ss58Codec>(
         v[4..68].copy_from_slice(&signature.to_bytes()[..]);
     }
     Ok(v)
+}
+
+pub fn inspect<T: BufRead, U: Ss58Codec>(
+    mut reader: T,
+    network: Ss58AddressFormat,
+    pk: &PublicKey,
+) -> std::io::Result<Vec<String>> {
+    let mut output = vec![];
+    let mut length = [0u8; 4];
+    let mut sig = [0u8; 64];
+    reader.read_exact(&mut length[..])?;
+    let mut digest = blake2b_simd::Params::new().hash_length(32).to_state();
+    digest.update(&length);
+    let length = u32::from_le_bytes(length);
+    reader.read_exact(&mut sig[..])?;
+    for i in 0..length {
+        let mut address = [0u8; 65];
+        reader.read_exact(&mut address[..64])?;
+        digest.update(&address[..64]);
+        assert_eq!(address[64], b'\0');
+        let len = address
+            .iter()
+            .position(|&s| s == b'\0')
+            .expect("our string is NUL-terminated");
+        let trimmed = core::str::from_utf8(&address[..len]).map_err(|j| {
+            Error::new(
+                ErrorKind::InvalidData,
+                format!("invalid UTF8 in address {}: {}", i, j),
+            )
+        })?;
+        let (_address, address_type): (AccountId, _) =
+            crate::parse_address(trimmed).map_err(|j| {
+                Error::new(
+                    ErrorKind::InvalidData,
+                    format!("parse error on line {}: {}", i, j),
+                )
+            })?;
+        let () = crate::validate_network(trimmed, address_type, network).map_err(|j| {
+            Error::new(
+                ErrorKind::InvalidData,
+                format!("invalid network on line {}: {}", i, j),
+            )
+        })?;
+        output.push(trimmed.to_owned())
+    }
+    ed25519_dalek::PublicKey::verify_strict(
+        &pk,
+        digest.finalize().as_bytes(),
+        &ed25519_dalek::Signature::new(sig),
+    )
+    .map_err(|_| Error::new(ErrorKind::InvalidData, "Allowlist forged!".to_owned()))?;
+    Ok(output)
 }
 
 #[cfg(test)]

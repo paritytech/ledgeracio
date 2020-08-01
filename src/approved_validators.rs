@@ -79,6 +79,19 @@ pub(crate) enum ACL {
         #[structopt(short = "o", long = "output")]
         output: PathBuf,
     },
+    /// Inspect the given allowlist file and verify its signature. The output is
+    /// in a format suitable for `ledgeracio sign`.
+    Inspect {
+        /// The binary allowlist file to read
+        #[structopt(short = "f", long = "file")]
+        file: PathBuf,
+        /// The public key file.
+        #[structopt(short = "p", long = "public")]
+        public: PathBuf,
+        /* /// The output file
+         *  #[structopt(short = "o", long = "output")]
+         * output: PathBuf, */
+    },
 }
 
 fn write(buf: &[u8], path: &std::path::Path) -> std::io::Result<()> {
@@ -97,7 +110,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
     hardware: T,
     network: Ss58AddressFormat,
 ) -> Result<(), Error> {
-    use ed25519_dalek::{ExpandedSecretKey, Keypair, PublicKey};
+    use ed25519_dalek::Keypair;
 
     match acl {
         ACL::GetKey => {
@@ -151,6 +164,14 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             let signed =
                 crate::parser::parse::<_, AccountId>(file, network, public.as_ref(), Some(&sk))?;
             std::fs::write(output, signed)?;
+            Ok(())
+        }
+        ACL::Inspect { file, public } => {
+            let file = std::io::BufReader::new(std::fs::File::open(file)?);
+            let pk = ed25519_dalek::PublicKey::from_bytes(&*std::fs::read(public)?)?;
+            for i in crate::parser::inspect::<_, AccountId>(file, network, &pk)? {
+                println!("{}", i);
+            }
             Ok(())
         }
     }
