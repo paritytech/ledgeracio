@@ -115,6 +115,13 @@ pub fn inspect<T: BufRead, U: Ss58Codec>(
         })?;
         output.push(trimmed.to_owned())
     }
+    let mut dummy = [0u8; 1];
+    if reader.read(&mut dummy)? != 0 {
+        return Err(Error::new(
+            ErrorKind::InvalidData,
+            "junk at end of file".to_owned(),
+        ))
+    }
     ed25519_dalek::PublicKey::verify_strict(
         &pk,
         digest.finalize().as_bytes(),
