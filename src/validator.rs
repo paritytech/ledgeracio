@@ -20,7 +20,7 @@ use core::{future::Future, pin::Pin};
 use substrate_subxt::{session::SetKeysCallExt,
                       sp_core::crypto::Ss58AddressFormat,
                       sp_runtime::Perbill,
-                      staking::{LedgerStore, RewardDestination, SetPayeeCallExt, ValidateCallExt,
+                      staking::{RewardDestination, SetPayeeCallExt, ValidateCallExt,
                                 ValidatorPrefs},
                       system::System,
                       Client, KusamaRuntime, SessionKeys};
@@ -87,10 +87,7 @@ pub(crate) async fn main(
                 index,
             )
             .await?;
-            for controller in validators {
-                let validators = client.fetch(LedgerStore { controller }, None).await?;
-                println!("Validator status: {:#?}", validators);
-            }
+            crate::common::display_validators(&client, &*validators).await?;
             Ok(Default::default())
         }
         Validator::SetPayee { index, target } => {

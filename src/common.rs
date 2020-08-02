@@ -33,7 +33,10 @@ pub(crate) async fn fetch_validators(
         let signer = keystore.signer(path).await?;
         return Ok(vec![signer.account_id().clone()])
     }
-    for index in 0.. {
+    let mut index = 0u32;
+    loop {
+        index += 1;
+        assert!(index > 0);
         let path = LedgeracioPath::new(network, account_type, index)?;
         let signer = keystore.signer(path).await?;
         let account_id = signer.account_id();
@@ -42,5 +45,40 @@ pub(crate) async fn fetch_validators(
         }
         v.push(account_id.clone())
     }
-    unreachable!()
+}
+
+pub(crate) async fn display_validators(
+    client: &Client<KusamaRuntime>,
+    nominations: &[AccountId],
+) -> Result<(), Error> {
+    use substrate_subxt::staking::{LedgerStore, StakingLedger, ValidatorsStore};
+    for controller in nominations {
+        let store = LedgerStore {
+            controller: controller.clone(),
+        };
+        match client.fetch(store, None).await? {
+            None => println!("validator {} not found", controller),
+            Some(StakingLedger {
+                stash,
+                total,
+                active,
+                unlocking,
+                claimed_rewards,
+            }) => {
+                println!(
+                    "    Validator account: {}\n    Stash balance: {}\n    Amount at stake: \
+                     {}\nAmount unlocking: {:?}\nRewards claimed: {:?}\n",
+                    stash, total, active, unlocking, claimed_rewards
+                );
+                let store = ValidatorsStore {
+                    stash: stash.clone(),
+                };
+                match client.fetch(store, None).await? {
+                    None => println!("validator {} has no preferences (this is a bug)", stash),
+                    Some(prefs) => println!("    Prefs: {:?}\n", prefs),
+                }
+            }
+        }
+    }
+    Ok(())
 }

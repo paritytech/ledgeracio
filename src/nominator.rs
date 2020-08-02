@@ -54,6 +54,7 @@ pub(crate) async fn main(
     keystore: &crate::HardStore,
 ) -> Result<H256, Error> {
     use std::convert::{TryFrom, TryInto};
+    use substrate_subxt::staking::{NominatorsStore, StakingLedger};
     match cmd {
         Nominator::Show { index } => {
             let client = client.await?;
@@ -66,27 +67,35 @@ pub(crate) async fn main(
             )
             .await?;
             for controller in nominators {
-                match client
-                    .fetch(
-                        LedgerStore {
-                            controller: controller.clone(),
-                        },
-                        None,
-                    )
-                    .await?
-                {
-                    Some(stash) => println!(
-                        "Nominator account: {}\nStash balance: {}\nAmount at stake: {}",
-                        stash.stash, stash.total, stash.active
-                    ),
+                let store = LedgerStore {
+                    controller: controller.clone(),
+                };
+                let StakingLedger {
+                    stash,
+                    total,
+                    active,
+                    unlocking,
+                    claimed_rewards,
+                } = client.fetch(store, None).await?.ok_or_else(|| {
+                    format!("No nominator account found for controller {}", controller)
+                })?;
+                println!(
+                    "Nominator account: {}\nStash balance: {}\nAmount at stake: {}\nAmount \
+                     unlocking: {:?}\nRewards claimed: {:?}\nValidators nominated:",
+                    stash, total, active, unlocking, claimed_rewards,
+                );
+                let nominations = match client.fetch(NominatorsStore { stash }, None).await? {
                     None => {
-                        return Err(format!(
-                            "No nominator account found for controller {}",
-                            controller
-                        )
-                        .into())
+                        println!("Nominations: None (yet)");
+                        continue
                     }
-                }
+                    Some(n) => n,
+                };
+                println!(
+                    "Era nominations submitted: {}\nNominations suppressed: {}\nTargets:\n",
+                    nominations.submitted_in, nominations.suppressed
+                );
+                crate::common::display_validators(&client, &*nominations.targets).await?
             }
             Ok(Default::default())
         }
