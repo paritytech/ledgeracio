@@ -68,6 +68,10 @@ pub(crate) enum ACL {
         /// The output file
         #[structopt(short = "o", long = "output")]
         output: PathBuf,
+        /// The nonce.  This must be greater than any nonce used previously with
+        /// the same key, and is used to prevent replay attacks.
+        #[structopt(short = "n", long = "nonce")]
+        nonce: u32,
     },
     /// Inspect the given allowlist file and verify its signature. The output is
     /// in a format suitable for `ledgeracio sign`.
@@ -149,6 +153,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             file,
             secret,
             output,
+            nonce,
         } => {
             let file = std::io::BufReader::new(fs::File::open(file)?);
             let secret: Vec<u8> = fs::read(secret)?;
@@ -180,7 +185,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
 
             let sk = (&ed25519_dalek::SecretKey::from_bytes(&secret[24..56])?).into();
             let pk = ed25519_dalek::PublicKey::from_bytes(&secret[56..88])?;
-            let signed = crate::parser::parse::<_, AccountId>(file, network, Some(&pk), Some(&sk))?;
+            let signed = crate::parser::parse::<_, AccountId>(file, network, &pk, &sk, nonce)?;
             fs::write(output, signed)?;
             Ok(())
         }

@@ -24,10 +24,12 @@ use substrate_subxt::sp_core::crypto::{AccountId32 as AccountId, Ss58AddressForm
 pub fn parse<T: BufRead, U: Ss58Codec>(
     reader: T,
     network: Ss58AddressFormat,
-    pk: Option<&PublicKey>,
-    sk: Option<&ExpandedSecretKey>,
+    pk: &PublicKey,
+    sk: &ExpandedSecretKey,
+    nonce: u32,
 ) -> std::io::Result<Vec<u8>> {
-    let mut v = vec![0; 68];
+    let mut v = vec![0; 72];
+    v[..4].copy_from_slice(&nonce.to_le_bytes());
     for (l, i) in reader.lines().enumerate() {
         let i = i?;
         let trimmed = i.trim_start().trim_end();
@@ -53,22 +55,15 @@ pub fn parse<T: BufRead, U: Ss58Codec>(
         v[current_len..current_len + bytes.len()].copy_from_slice(bytes);
     }
     let total_len_bytes = u32::try_from((v.len() - 68) >> 6).unwrap().to_le_bytes();
-    v[..4].copy_from_slice(&total_len_bytes);
-    if let Some(sk) = sk {
-        let digest = blake2b_simd::Params::new()
-            .hash_length(32)
-            .to_state()
-            .update(&total_len_bytes)
-            .update(&v[68..])
-            .finalize();
-        let mut dummy_option = None;
-        let pk = pk.unwrap_or_else(|| {
-            dummy_option = Some(PublicKey::from(sk));
-            dummy_option.as_ref().unwrap()
-        });
-        let signature = sk.sign(&digest.as_bytes(), &pk);
-        v[4..68].copy_from_slice(&signature.to_bytes()[..]);
-    }
+    v[4..8].copy_from_slice(&total_len_bytes);
+    let digest = blake2b_simd::Params::new()
+        .hash_length(32)
+        .to_state()
+        .update(&v[..8])
+        .update(&v[72..])
+        .finalize();
+    let signature = sk.sign(&digest.as_bytes(), &pk);
+    v[8..72].copy_from_slice(&signature.to_bytes()[..]);
     Ok(v)
 }
 
@@ -78,13 +73,17 @@ pub fn inspect<T: BufRead, U: Ss58Codec>(
     pk: &PublicKey,
 ) -> std::io::Result<Vec<String>> {
     let mut output = vec![];
+    let mut nonce = [0u8; 4];
     let mut length = [0u8; 4];
     let mut sig = [0u8; 64];
+    reader.read_exact(&mut nonce[..])?;
     reader.read_exact(&mut length[..])?;
     let mut digest = blake2b_simd::Params::new().hash_length(32).to_state();
+    digest.update(&nonce);
     digest.update(&length);
     let length = u32::from_le_bytes(length);
     reader.read_exact(&mut sig[..])?;
+    output.push(format!("Nonce: {}\n", u32::from_le_bytes(nonce)));
     for i in 0..length {
         let mut address = [0u8; 65];
         reader.read_exact(&mut address[..64])?;
