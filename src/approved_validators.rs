@@ -18,11 +18,10 @@
 
 use super::{Error, StructOpt};
 use crate::{AccountId, Ss58AddressFormat};
-use std::{fs::OpenOptions,
-          io::Write,
-          os::unix::{ffi::OsStrExt, fs::OpenOptionsExt},
+use std::{convert::TryInto, fs::OpenOptions, io::Write, os::unix::fs::OpenOptionsExt,
           path::PathBuf};
 
+const MAGIC: &'static [u8] = &*b"Ledgeracio Secret Key";
 #[derive(StructOpt, Debug)]
 pub(crate) enum ACL {
     /// Upload a new approved validator list.  This list must be signed.
@@ -30,29 +29,20 @@ pub(crate) enum ACL {
     /// Set the validator list signing key.  This will fail if a signing key has
     /// already been set.
     SetKey {
-        #[structopt(parse(try_from_str = hex::FromHex::from_hex))]
-        key: [u8; 32],
+        /// The file containing the public signing key.  You can generate this
+        /// file with `ledgeracio allowlist gen-key`.
+        key: PathBuf,
     },
     /// Get the validator list signing key.  This will fail unless a signing key
     /// has been set.
     GetKey,
     /// Generate a new signing key.
     GenKey {
-        /// File to write the public key to.  This must have the extension
-        /// `.pub`.
+        /// Prefix of the file to write the keys to
         ///
-        /// The public key can (and should) be freely distributed.
-        #[structopt(short = "p", long = "public")]
-        public: PathBuf,
-        /// File to write the secret key to.  This must end with `.sec`.
-        /// Furthermore, all but the last four bytes of the public and
-        /// secret key filenames must be identical.
-        ///
-        /// This file will be created with 0o600 permissions (read and write for
-        /// owner only), and its contents must be kept secret.  Anyone
-        /// who can read this file can sign allowlists.
-        #[structopt(short = "s", long = "secret")]
-        secret: PathBuf,
+        /// The public key will be written to `file.pub` and the secret key
+        /// to `file.sec`.
+        file: PathBuf,
     },
     /// Compile the provided textual allowlist into a binary format and sign it.
     ///
@@ -75,9 +65,6 @@ pub(crate) enum ACL {
         /// The secret key file.
         #[structopt(short = "s", long = "secret")]
         secret: PathBuf,
-        /// The public key file.  Optional, but strongly recommended.
-        #[structopt(short = "p", long = "public")]
-        public: Option<PathBuf>,
         /// The output file
         #[structopt(short = "o", long = "output")]
         output: PathBuf,
@@ -97,14 +84,17 @@ pub(crate) enum ACL {
     },
 }
 
-fn write(buf: &[u8], path: &std::path::Path) -> std::io::Result<()> {
-    OpenOptions::new()
+fn write(buf: &[&[u8]], path: &std::path::Path) -> std::io::Result<()> {
+    let mut f = OpenOptions::new()
         .mode(0o400)
         .write(true)
         .create(true)
         .truncate(true)
-        .open(path)?
-        .write_all(buf)
+        .open(path)?;
+    for i in buf {
+        let () = f.write_all(i)?;
+    }
+    Ok(())
 }
 
 pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
@@ -113,59 +103,85 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
     network: Ss58AddressFormat,
 ) -> Result<(), Error> {
     use ed25519_dalek::Keypair;
+    use std::fs;
 
     match acl {
         ACL::GetKey => {
-            let s = hardware()?.get_pubkey().await?;
+            let s: [u8; 32] = hardware()?.get_pubkey().await?;
             println!("Public key is {}", hex::encode(s));
             Ok(())
         }
-        ACL::SetKey { key } => hardware()?.set_pubkey(&key).await,
+        ACL::SetKey { key } => {
+            let key = ed25519_dalek::PublicKey::from_bytes(&*fs::read(key)?)?;
+            hardware()?.set_pubkey(&key.as_bytes()).await
+        }
         ACL::Upload { path } => {
-            let allowlist = std::fs::read(path)?;
+            let allowlist = fs::read(path)?;
             hardware()?.allowlist_upload(&allowlist).await
         }
-        ACL::GenKey { public, secret } => {
-            let pub_bytes = public.as_os_str().as_bytes();
-            let sec_bytes = secret.as_os_str().as_bytes();
-            let len = pub_bytes.len();
-            if !pub_bytes.ends_with(b".pub")
-                || !sec_bytes.ends_with(b".sec")
-                || len != sec_bytes.len()
-                || pub_bytes[..len - 4] != sec_bytes[..len - 4]
-            {
-                return Err(
-                    "Public and secret key filenames must match, except that the public key file \
-                     must have extension .pub and secret key file must have extension .sec"
-                        .to_owned()
-                        .into(),
+        ACL::GenKey { mut file } => {
+            if file.extension().is_some() {
+                return Err(format!(
+                    "please provide a filename with no extension, not {}",
+                    file.display()
                 )
+                .into())
             }
             let keypair = Keypair::generate(&mut rand::rngs::OsRng {});
             let secretkey = keypair.secret.to_bytes();
             let publickey = keypair.public.to_bytes();
-            write(&publickey, &public)?;
-            write(&secretkey, &secret)?;
+            file.set_extension("pub");
+            write(&[&publickey[..]], &file)?;
+            file.set_extension("sec");
+            write(
+                &[
+                    MAGIC,
+                    &1u16.to_le_bytes(),
+                    &[network.into()],
+                    &secretkey[..],
+                    &publickey[..],
+                ],
+                &file,
+            )?;
             Ok(())
         }
         ACL::Sign {
             file,
-            public,
             secret,
             output,
         } => {
-            let file = std::io::BufReader::new(std::fs::File::open(file)?);
-            let public = match public {
-                None => None,
-                Some(public) => Some(ed25519_dalek::PublicKey::from_bytes(&*std::fs::read(
-                    public,
-                )?)?),
-            };
-            let secret: Vec<u8> = std::fs::read(secret)?;
-            let sk = (&ed25519_dalek::SecretKey::from_bytes(&*secret)?).into();
-            let signed =
-                crate::parser::parse::<_, AccountId>(file, network, public.as_ref(), Some(&sk))?;
-            std::fs::write(output, signed)?;
+            let file = std::io::BufReader::new(fs::File::open(file)?);
+            let secret: Vec<u8> = fs::read(secret)?;
+            if secret.len() != 88 {
+                return Err(
+                    format!("Ledgeracio secret keys are 88 bytes, not {}", secret.len()).into(),
+                )
+            }
+            if &secret[..21] != MAGIC {
+                return Err(format!("Not a Ledgeracio secret key ― wrong magic number").into())
+            }
+            if &secret[21..23] != &[1u8, 0][..] {
+                return Err(format!(
+                    "Expected a version 1 secret key, but got version {}",
+                    u16::from_le_bytes(secret[21..23].try_into().unwrap())
+                )
+                .into())
+            }
+            if secret[23] != u8::from(network) {
+                return Err(format!(
+                    "Expected a key for network {}, but got a key for network {}",
+                    network,
+                    secret[23]
+                        .try_into()
+                        .unwrap_or_else(|()| Ss58AddressFormat::Custom(secret[23]))
+                )
+                .into())
+            }
+
+            let sk = (&ed25519_dalek::SecretKey::from_bytes(&secret[24..56])?).into();
+            let pk = ed25519_dalek::PublicKey::from_bytes(&secret[56..88])?;
+            let signed = crate::parser::parse::<_, AccountId>(file, network, Some(&pk), Some(&sk))?;
+            fs::write(output, signed)?;
             Ok(())
         }
         ACL::Inspect {
@@ -173,8 +189,8 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             public,
             output,
         } => {
-            let file = std::io::BufReader::new(std::fs::File::open(file)?);
-            let pk = ed25519_dalek::PublicKey::from_bytes(&*std::fs::read(public)?)?;
+            let file = std::io::BufReader::new(fs::File::open(file)?);
+            let pk = ed25519_dalek::PublicKey::from_bytes(&*fs::read(public)?)?;
             let stdout = std::io::stdout();
             let mut output = std::io::BufWriter::new(match output {
                 None => Box::new(stdout.lock()) as Box<dyn std::io::Write>,
