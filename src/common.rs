@@ -22,11 +22,13 @@ use substrate_subxt::{sp_core::crypto::Ss58AddressFormat, system::AccountStoreEx
 
 pub(crate) async fn fetch_validators(
     client: &Client<KusamaRuntime>,
+    source: AddressSource<'_>,
     network: Ss58AddressFormat,
     account_type: AccountType,
-    keystore: &super::HardStore,
-    index: Option<u32>,
 ) -> Result<Vec<AccountId>, Error> {
+    let (index, keystore) = match source {
+        AddressSource::Device(index, signer) => (index, signer),
+    };
     let mut v = vec![];
     if let Some(index) = index {
         let path = LedgeracioPath::new(network, account_type, index)?;
@@ -45,6 +47,10 @@ pub(crate) async fn fetch_validators(
         }
         v.push(account_id.clone())
     }
+}
+
+pub(crate) enum AddressSource<'a> {
+    Device(Option<u32>, &'a crate::HardStore),
 }
 
 pub(crate) async fn display_validators(

@@ -14,20 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{parse_reward_destination, AccountType, Error, LedgeracioPath, StructOpt};
+use super::{parse_address, parse_reward_destination, AccountType, AddressSource, Error,
+            LedgeracioPath, StructOpt};
 use codec::Decode;
 use core::{future::Future, pin::Pin};
 use substrate_subxt::{session::SetKeysCallExt,
-                      sp_core::crypto::Ss58AddressFormat,
+                      sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat},
                       sp_runtime::Perbill,
-                      staking::{RewardDestination, SetPayeeCallExt, ValidateCallExt,
+                      staking::{BondedStore, RewardDestination, SetPayeeCallExt, ValidateCallExt,
                                 ValidatorPrefs},
-                      system::System,
                       Client, KusamaRuntime, SessionKeys};
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum Validator {
-    /// Show status of all Validator Controller keys
+    /// Show the status of the given validator address.  This does not require a
+    /// Ledger device.
+    ShowAddress {
+        #[structopt(parse(try_from_str = parse_address))]
+        address: (AccountId, u8),
+    },
+    /// Show status of the given Validator Controller key, or all if none is
+    /// specified.
     Status { index: Option<u32> },
     /// Announce intention to validate
     Announce { index: u32, commission: Option<u32> },
@@ -57,34 +64,51 @@ fn parse_keys(buffer: &str) -> Result<SessionKeys, Error> {
     Decode::decode(&mut &*bytes).map_err(|e| Box::new(e) as _)
 }
 
-pub(crate) async fn main(
+pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
     cmd: Validator,
     client: Pin<Box<dyn Future<Output = Result<Client<KusamaRuntime>, Error>>>>,
     network: Ss58AddressFormat,
-    keystore: &super::HardStore,
-) -> Result<<KusamaRuntime as System>::Hash, Error> {
+    keystore: T,
+) -> Result<(), Error> {
     match cmd {
+        Validator::ShowAddress {
+            address: (stash, provided_network),
+        } => {
+            super::validate_network("", provided_network, network)?;
+            let client = client.await?;
+            if false {
+                let controller = match client.fetch(BondedStore { stash }, None).await? {
+                    Some(controller) => controller,
+                    None => return Err("Controller not found for stash".to_owned().into()),
+                };
+                crate::common::display_validators(&client, &[controller]).await?;
+            } else {
+                crate::common::display_validators(&client, &[stash]).await?;
+            }
+            Ok(())
+        }
         Validator::Announce { index, commission } => {
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
             let prefs = ValidatorPrefs {
                 commission: Perbill::from_parts(commission.unwrap_or(u32::max_value())),
             };
-            let signer = keystore.signer(path).await?;
-            Ok(client.await?.validate(&signer, prefs).await?)
+            let signer = keystore()?.signer(path).await?;
+            client.await?.validate(&signer, prefs).await?;
+            Ok(())
         }
         Validator::ReplaceKey { index, keys } => {
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
-            let signer = keystore.signer(path).await?;
-            Ok(client.await?.set_keys(&signer, keys, vec![]).await?)
+            let signer = keystore()?.signer(path).await?;
+            client.await?.set_keys(&signer, keys, vec![]).await?;
+            Ok(())
         }
         Validator::Status { index } => {
             let client = client.await?;
             let validators = crate::common::fetch_validators(
                 &client,
+                AddressSource::Device(index, &keystore()?),
                 network,
                 AccountType::Validator,
-                keystore,
-                index,
             )
             .await?;
             crate::common::display_validators(&client, &*validators).await?;
@@ -92,11 +116,12 @@ pub(crate) async fn main(
         }
         Validator::SetPayee { index, target } => {
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
-            let signer = keystore.signer(path).await?;
-            Ok(client.await?.set_payee(&signer, target).await?)
+            let signer = keystore()?.signer(path).await?;
+            client.await?.set_payee(&signer, target).await?;
+            Ok(())
         }
         Validator::Address { index } => {
-            crate::display_path(AccountType::Validator, keystore, network, index).await?;
+            crate::display_path(AccountType::Validator, &keystore()?, network, index).await?;
             Ok(Default::default())
         }
     }

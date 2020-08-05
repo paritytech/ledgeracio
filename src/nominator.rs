@@ -18,13 +18,18 @@
 
 use super::{parse_address, parse_reward_destination, AccountType, Error, LedgeracioPath, StructOpt};
 use core::{future::Future, pin::Pin};
-use substrate_subxt::{sp_core::{crypto::{AccountId32 as AccountId, Ss58AddressFormat},
-                                H256},
-                      staking::{LedgerStore, NominateCallExt, RewardDestination, SetPayeeCallExt},
+use substrate_subxt::{sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat},
+                      staking::{BondedStore, LedgerStore, NominateCallExt, RewardDestination,
+                                SetPayeeCallExt},
                       Client, KusamaRuntime};
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum Nominator {
+    /// Show the given address
+    ShowAddress {
+        #[structopt(parse(try_from_str = parse_address))]
+        address: (AccountId, u8),
+    },
     /// Show the specified stash controller, or all if none is specified.
     Show { index: Option<u32> },
     /// Claim a validation payout
@@ -47,55 +52,74 @@ pub(crate) enum Nominator {
     Address { index: u32 },
 }
 
-pub(crate) async fn main(
+async fn display_nominators(
+    controller: AccountId,
+    client: &Client<KusamaRuntime>,
+) -> Result<(), Error> {
+    use substrate_subxt::staking::{NominatorsStore, StakingLedger};
+    let store = LedgerStore {
+        controller: controller.clone(),
+    };
+    let StakingLedger {
+        stash,
+        total,
+        active,
+        unlocking,
+        claimed_rewards,
+    } = client
+        .fetch(store, None)
+        .await?
+        .ok_or_else(|| format!("No nominator account found for controller {}", controller))?;
+    println!(
+        "Nominator account: {}\nStash balance: {}\nAmount at stake: {}\nAmount unlocking: \
+         {:?}\nRewards claimed: {:?}\nValidators nominated:",
+        stash, total, active, unlocking, claimed_rewards,
+    );
+    let nominations = match client.fetch(NominatorsStore { stash }, None).await? {
+        None => {
+            println!("Nominations: None (yet)");
+            return Ok(())
+        }
+        Some(n) => n,
+    };
+    println!(
+        "Era nominations submitted: {}\nNominations suppressed: {}\nTargets:\n",
+        nominations.submitted_in, nominations.suppressed
+    );
+    crate::common::display_validators(&client, &*nominations.targets).await
+}
+
+pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
     cmd: Nominator,
     client: Pin<Box<dyn Future<Output = Result<Client<KusamaRuntime>, Error>>>>,
     network: Ss58AddressFormat,
-    keystore: &crate::HardStore,
-) -> Result<H256, Error> {
+    keystore: T,
+) -> Result<(), Error> {
     use std::convert::{TryFrom, TryInto};
-    use substrate_subxt::staking::{NominatorsStore, StakingLedger};
     match cmd {
+        Nominator::ShowAddress {
+            address: (stash, provided_network),
+        } => {
+            super::validate_network("", provided_network, network)?;
+            let client = client.await?;
+            let controller = match client.fetch(BondedStore { stash }, None).await? {
+                Some(controller) => controller,
+                None => return Err("Controller not found for stash".to_owned().into()),
+            };
+            display_nominators(controller, &client).await?;
+            Ok(())
+        }
         Nominator::Show { index } => {
             let client = client.await?;
             let nominators = crate::common::fetch_validators(
                 &client,
+                crate::AddressSource::Device(index, &keystore()?),
                 network,
                 AccountType::Nominator,
-                keystore,
-                index,
             )
             .await?;
             for controller in nominators {
-                let store = LedgerStore {
-                    controller: controller.clone(),
-                };
-                let StakingLedger {
-                    stash,
-                    total,
-                    active,
-                    unlocking,
-                    claimed_rewards,
-                } = client.fetch(store, None).await?.ok_or_else(|| {
-                    format!("No nominator account found for controller {}", controller)
-                })?;
-                println!(
-                    "Nominator account: {}\nStash balance: {}\nAmount at stake: {}\nAmount \
-                     unlocking: {:?}\nRewards claimed: {:?}\nValidators nominated:",
-                    stash, total, active, unlocking, claimed_rewards,
-                );
-                let nominations = match client.fetch(NominatorsStore { stash }, None).await? {
-                    None => {
-                        println!("Nominations: None (yet)");
-                        continue
-                    }
-                    Some(n) => n,
-                };
-                println!(
-                    "Era nominations submitted: {}\nNominations suppressed: {}\nTargets:\n",
-                    nominations.submitted_in, nominations.suppressed
-                );
-                crate::common::display_validators(&client, &*nominations.targets).await?
+                display_nominators(controller, &client).await?
             }
             Ok(Default::default())
         }
@@ -103,7 +127,7 @@ pub(crate) async fn main(
         Nominator::Claim { index } => unimplemented!("claiming payment for {:?}", index),
         Nominator::Nominate { index, set } => {
             let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
-            let signer = keystore.signer(path).await?;
+            let signer = keystore()?.signer(path).await?;
             if set.is_empty() {
                 return Err("Validator set cannot be empty".to_owned().into())
             }
@@ -121,15 +145,17 @@ pub(crate) async fn main(
                 }
                 new_set.push(address)
             }
-            Ok(client.await?.nominate(&signer, new_set).await?)
+            client.await?.nominate(&signer, new_set).await?;
+            Ok(())
         }
         Nominator::SetPayee { index, target } => {
             let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
-            let signer = keystore.signer(path).await?;
-            Ok(client.await?.set_payee(&signer, target).await?)
+            let signer = keystore()?.signer(path).await?;
+            client.await?.set_payee(&signer, target).await?;
+            Ok(())
         }
         Nominator::Address { index } => {
-            crate::display_path(AccountType::Nominator, keystore, network, index).await?;
+            crate::display_path(AccountType::Nominator, &keystore()?, network, index).await?;
             Ok(Default::default())
         }
     }
