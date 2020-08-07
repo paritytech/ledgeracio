@@ -18,7 +18,10 @@
 
 use super::{Error, StructOpt};
 use crate::{AccountId, Ss58AddressFormat};
-use std::{convert::TryInto, fs::OpenOptions, io::Write, os::unix::fs::OpenOptionsExt,
+use std::{convert::{TryFrom, TryInto},
+          fs::OpenOptions,
+          io::Write,
+          os::unix::fs::OpenOptionsExt,
           path::PathBuf};
 
 const MAGIC: &'static [u8] = &*b"Ledgeracio Secret Key";
@@ -135,7 +138,16 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             let secretkey = keypair.secret.to_bytes();
             let publickey = keypair.public.to_bytes();
             file.set_extension("pub");
-            write(&[&publickey[..]], &file)?;
+            let public = format!(
+                "Ledgeracio version 1 public key for network {}\n{}\n",
+                match network {
+                    Ss58AddressFormat::KusamaAccount => "Kusama",
+                    Ss58AddressFormat::PolkadotAccount => "Polkadot",
+                    _ => unreachable!("should have been rejected earlier"),
+                },
+                base64::encode(&publickey[..])
+            );
+            write(&[public.as_bytes()], &file)?;
             file.set_extension("sec");
             write(
                 &[
@@ -194,8 +206,30 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             public,
             output,
         } => {
+            use regex::bytes::Regex;
+            use std::str;
             let file = std::io::BufReader::new(fs::File::open(file)?);
-            let pk = ed25519_dalek::PublicKey::from_bytes(&*fs::read(public)?)?;
+            let pk = fs::read(public)?;
+            let re = Regex::new(r"^Ledgeracio version ([1-9][0-9]*) public key for network ([[:alpha:]]+)\n([[:alnum:]/+]+=)\n$").unwrap();
+            let captures = re
+                .captures(&pk)
+                .ok_or_else(|| "Invalid public key".to_owned())?;
+            let (version, network, data) = (
+                str::from_utf8(&captures[1]).unwrap(),
+                str::from_utf8(&captures[2]).unwrap(),
+                str::from_utf8(&captures[3]).unwrap(),
+            );
+            if version != "1" {
+                return Err("Only version 1 keys are supported".to_owned().into())
+            }
+            let network =
+                Ss58AddressFormat::try_from(&*network.to_ascii_lowercase()).map_err(|()| format!("invalid network {}", network))?;
+            let mut pk = [0u8; 32];
+            assert_eq!(
+                base64::decode_config_slice(&*data, base64::STANDARD, &mut pk)?,
+                pk.len()
+            );
+            let pk = ed25519_dalek::PublicKey::from_bytes(&pk[..])?;
             let stdout = std::io::stdout();
             let mut output = std::io::BufWriter::new(match output {
                 None => Box::new(stdout.lock()) as Box<dyn std::io::Write>,

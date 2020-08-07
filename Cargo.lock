@@ -1603,6 +1603,7 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "rand 0.7.3",
+ "regex",
  "sha2 0.9.1",
  "structopt",
  "substrate-subxt",
