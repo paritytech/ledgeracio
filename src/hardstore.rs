@@ -136,9 +136,10 @@ impl HardSigner {
     {
         let app = self.app.clone();
         let path = self.path.clone();
-        let encoded = extrinsic.encode();
-        let (call, extra, _) = extrinsic.deconstruct();
-        let signature = match app.sign(path.as_ref(), &encoded).await {
+        let call = extrinsic.deconstruct();
+        let call_bytes = call.encode();
+        let (call, extra, _) = call;
+        let signature = match app.sign(path.as_ref(), &*call_bytes).await {
             Ok(e) => e,
             Err(e) => return Err(e.to_string()),
         };

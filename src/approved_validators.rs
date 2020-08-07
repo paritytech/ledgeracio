@@ -222,8 +222,8 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             if version != "1" {
                 return Err("Only version 1 keys are supported".to_owned().into())
             }
-            let network =
-                Ss58AddressFormat::try_from(&*network.to_ascii_lowercase()).map_err(|()| format!("invalid network {}", network))?;
+            let network = Ss58AddressFormat::try_from(&*network.to_ascii_lowercase())
+                .map_err(|()| format!("invalid network {}", network))?;
             let mut pk = [0u8; 32];
             assert_eq!(
                 base64::decode_config_slice(&*data, base64::STANDARD, &mut pk)?,
