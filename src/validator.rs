@@ -76,15 +76,11 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
         } => {
             super::validate_network("", provided_network, network)?;
             let client = client.await?;
-            if false {
-                let controller = match client.fetch(BondedStore { stash }, None).await? {
-                    Some(controller) => controller,
-                    None => return Err("Controller not found for stash".to_owned().into()),
-                };
-                crate::common::display_validators(&client, &[controller]).await?;
-            } else {
-                crate::common::display_validators(&client, &[stash]).await?;
-            }
+            let controller = match client.fetch(&BondedStore { stash }, None).await? {
+                Some(controller) => controller,
+                None => return Err("Controller not found for stash".to_owned().into()),
+            };
+            crate::common::display_validators(&client, &[controller], network).await?;
             Ok(())
         }
         Validator::Announce { index, commission } => {
@@ -104,6 +100,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
         }
         Validator::Status { index } => {
             let client = client.await?;
+            // These are *controller*, not *stash*, accounts.
             let validators = crate::common::fetch_validators(
                 &client,
                 AddressSource::Device(index, &keystore()?),
@@ -111,7 +108,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                 AccountType::Validator,
             )
             .await?;
-            crate::common::display_validators(&client, &*validators).await?;
+            crate::common::display_validators(&client, &*validators, network).await?;
             Ok(Default::default())
         }
         Validator::SetPayee { index, target } => {

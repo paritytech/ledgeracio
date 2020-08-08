@@ -18,9 +18,9 @@
 
 use super::{parse_address, parse_reward_destination, AccountType, Error, LedgeracioPath, StructOpt};
 use core::{future::Future, pin::Pin};
-use substrate_subxt::{sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat},
-                      staking::{BondedStore, LedgerStore, NominateCallExt, RewardDestination,
-                                SetPayeeCallExt},
+use substrate_subxt::{sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat, Ss58Codec},
+                      staking::{BondedStore, LedgerStore, NominateCallExt, PayeeStore,
+                                RewardDestination, SetPayeeCallExt},
                       Client, KusamaRuntime};
 
 #[derive(StructOpt, Debug)]
@@ -55,6 +55,7 @@ pub(crate) enum Nominator {
 async fn display_nominators(
     controller: AccountId,
     client: &Client<KusamaRuntime>,
+    network: Ss58AddressFormat,
 ) -> Result<(), Error> {
     use substrate_subxt::staking::{NominatorsStore, StakingLedger};
     let store = LedgerStore {
@@ -65,17 +66,35 @@ async fn display_nominators(
         total,
         active,
         unlocking,
-        claimed_rewards,
+        claimed_rewards: _, // not updated for nominators
     } = client
-        .fetch(store, None)
+        .fetch(&store, None)
         .await?
         .ok_or_else(|| format!("No nominator account found for controller {}", controller))?;
+    let payee = client
+        .fetch(
+            &PayeeStore {
+                stash: stash.clone(),
+            },
+            None,
+        )
+        .await?
+        .ok_or_else(|| {
+            format!(
+                "No payee found for controller {} (this is a bug)",
+                controller
+            )
+        })?;
     println!(
         "Nominator account: {}\nStash balance: {}\nAmount at stake: {}\nAmount unlocking: \
-         {:?}\nRewards claimed: {:?}\nValidators nominated:",
-        stash, total, active, unlocking, claimed_rewards,
+         {:?}\nPayee: {:?}",
+        stash.to_ss58check_with_version(network),
+        total,
+        active,
+        unlocking,
+        payee
     );
-    let nominations = match client.fetch(NominatorsStore { stash }, None).await? {
+    let nominations = match client.fetch(&NominatorsStore { stash }, None).await? {
         None => {
             println!("Nominations: None (yet)");
             return Ok(())
@@ -86,7 +105,26 @@ async fn display_nominators(
         "Era nominations submitted: {}\nNominations suppressed: {}\nTargets:\n",
         nominations.submitted_in, nominations.suppressed
     );
-    crate::common::display_validators(&client, &*nominations.targets).await
+    for stash in nominations.targets.iter().cloned() {
+        match client
+            .fetch(
+                &BondedStore {
+                    stash: stash.clone(),
+                },
+                None,
+            )
+            .await?
+        {
+            Some(controller) => {
+                crate::common::display_validators(client, &[controller], network).await?
+            }
+            None => println!(
+                "controller not found for stash {}\n",
+                stash.to_ss58check_with_version(network)
+            ),
+        }
+    }
+    Ok(())
 }
 
 pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
@@ -102,11 +140,11 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
         } => {
             super::validate_network("", provided_network, network)?;
             let client = client.await?;
-            let controller = match client.fetch(BondedStore { stash }, None).await? {
+            let controller = match client.fetch(&BondedStore { stash }, None).await? {
                 Some(controller) => controller,
                 None => return Err("Controller not found for stash".to_owned().into()),
             };
-            display_nominators(controller, &client).await?;
+            display_nominators(controller, &client, network).await?;
             Ok(())
         }
         Nominator::Show { index } => {
@@ -119,7 +157,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             )
             .await?;
             for controller in nominators {
-                display_nominators(controller, &client).await?
+                display_nominators(controller, &client, network).await?
             }
             Ok(Default::default())
         }

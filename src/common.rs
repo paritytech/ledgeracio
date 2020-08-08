@@ -17,8 +17,9 @@
 //! Utilities shared by both validator and nominator code
 
 use super::{AccountId, AccountType, Error, LedgeracioPath};
-use substrate_subxt::{sp_core::crypto::Ss58AddressFormat, system::AccountStoreExt, Client,
-                      KusamaRuntime, Signer};
+use substrate_subxt::{sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
+                      system::AccountStoreExt,
+                      Client, KusamaRuntime, Signer};
 
 pub(crate) async fn fetch_validators(
     client: &Client<KusamaRuntime>,
@@ -56,14 +57,18 @@ pub(crate) enum AddressSource<'a> {
 pub(crate) async fn display_validators(
     client: &Client<KusamaRuntime>,
     nominations: &[AccountId],
+    network: Ss58AddressFormat,
 ) -> Result<(), Error> {
     use substrate_subxt::staking::{LedgerStore, StakingLedger, ValidatorsStore};
     for controller in nominations {
         let store = LedgerStore {
             controller: controller.clone(),
         };
-        match client.fetch(store, None).await? {
-            None => println!("validator {} not found", controller),
+        match client.fetch(&store, None).await? {
+            None => println!(
+                "validator {} not found",
+                controller.to_ss58check_with_version(network)
+            ),
             Some(StakingLedger {
                 stash,
                 total,
@@ -73,14 +78,17 @@ pub(crate) async fn display_validators(
             }) => {
                 println!(
                     "    Validator account: {}\n    Stash balance: {}\n    Amount at stake: \
-                     {}\nAmount unlocking: {:?}\nRewards claimed: {:?}\n",
-                    stash, total, active, unlocking, claimed_rewards
+                     {}\n    Amount unlocking: {:?}\n    Rewards claimed: {:?}",
+                    stash.to_ss58check_with_version(network), total, active, unlocking, claimed_rewards
                 );
                 let store = ValidatorsStore {
                     stash: stash.clone(),
                 };
-                match client.fetch(store, None).await? {
-                    None => println!("validator {} has no preferences (this is a bug)", stash),
+                match client.fetch(&store, None).await? {
+                    None => println!(
+                        "    validator {} has no preferences (this is a bug)\n",
+                        stash.to_ss58check_with_version(network)
+                    ),
                     Some(prefs) => println!("    Prefs: {:?}\n", prefs),
                 }
             }
