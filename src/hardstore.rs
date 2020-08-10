@@ -80,23 +80,20 @@ impl HardStore {
         let app = self.inner.clone();
         let ledger_address = app.get_address(path.as_ref(), false).await;
 
-        let res = {
-            let ledger_address = match ledger_address {
-                Ok(e) => e,
-                Err(e) => {
-                    eprintln!(
-                        "Failed to obtain a signer for path {}: {}.\n\nCheck that your Ledger \
-                         device is connected, and that you have the correct app\nopen for the \
-                         network you are using.",
-                        path, e
-                    );
-                    return Err(Box::new(e) as _)
-                }
-            };
-            let address = ledger_address.public_key.into();
-            Ok(HardSigner { app, path, address })
+        let ledger_address = match ledger_address {
+            Ok(e) => e,
+            Err(e) => {
+                eprintln!(
+                    "Failed to obtain a signer for path {}: {}.\n\nCheck that your Ledger device \
+                     is connected, and that you have the correct app\nopen for the network you \
+                     are using.",
+                    path, e
+                );
+                return Err(Box::new(e) as _)
+            }
         };
-        res
+        let address = ledger_address.public_key.into();
+        Ok(HardSigner { app, path, address })
     }
 
     pub async fn set_pubkey(&self, key: &'_ [u8; 32]) -> Result<(), Error> {
@@ -149,7 +146,7 @@ impl HardSigner {
         };
         Ok(UncheckedExtrinsic::new_signed(
             call,
-            self.address.clone().into(),
+            self.address.clone(),
             signature,
             extra,
         ))

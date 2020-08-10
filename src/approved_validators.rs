@@ -24,7 +24,7 @@ use std::{convert::{TryFrom, TryInto},
           os::unix::fs::OpenOptionsExt,
           path::PathBuf};
 
-const MAGIC: &'static [u8] = &*b"Ledgeracio Secret Key";
+const MAGIC: &[u8] = &*b"Ledgeracio Secret Key";
 #[derive(StructOpt, Debug)]
 pub(crate) enum ACL {
     /// Upload a new approved validator list.  This list must be signed.
@@ -175,9 +175,11 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                 )
             }
             if &secret[..21] != MAGIC {
-                return Err(format!("Not a Ledgeracio secret key ― wrong magic number").into())
+                return Err("Not a Ledgeracio secret key ― wrong magic number"
+                    .to_owned()
+                    .into())
             }
-            if &secret[21..23] != &[1u8, 0][..] {
+            if secret[21..23] != [1u8, 0][..] {
                 return Err(format!(
                     "Expected a version 1 secret key, but got version {}",
                     u16::from_le_bytes(secret[21..23].try_into().unwrap())

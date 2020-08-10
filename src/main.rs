@@ -16,6 +16,8 @@
 
 //! The main binary of Ledgeracio
 
+#![deny(clippy::all)]
+#![forbid(unsafe_code)]
 #[cfg(feature = "allowlist")]
 mod approved_validators;
 mod common;
@@ -112,10 +114,8 @@ async fn display_path(
     let path = LedgeracioPath::new(network, account_type, index)?;
     let signer: hardstore::HardSigner = keystore.signer(path).await?;
     let account_id: &AccountId = signer.account_id();
-    Ok(println!(
-        "{}",
-        account_id.to_ss58check_with_version(network)
-    ))
+    println!("{}", account_id.to_ss58check_with_version(network));
+    Ok(())
 }
 
 #[derive(StructOpt, Debug)]
@@ -204,7 +204,7 @@ fn validate_network(
             "Network mismatch: address {} is for network {}, but you asked to use network {}",
             address,
             String::from(Ss58AddressFormat::try_from(provided_network).unwrap()),
-            String::from(Ss58AddressFormat::try_from(network).unwrap()),
+            String::from(network),
         )
         .into())
     } else {

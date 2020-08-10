@@ -159,7 +159,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             for controller in nominators {
                 display_nominators(controller, &client, network).await?
             }
-            Ok(Default::default())
+            Ok(())
         }
 
         Nominator::Claim { index } => unimplemented!("claiming payment for {:?}", index),
@@ -177,7 +177,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                          network {}",
                         address,
                         String::from(Ss58AddressFormat::try_from(provided_network).unwrap()),
-                        String::from(Ss58AddressFormat::try_from(network).unwrap()),
+                        String::from(network),
                     )
                     .into())
                 }
@@ -194,7 +194,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
         }
         Nominator::Address { index } => {
             crate::display_path(AccountType::Nominator, &keystore()?, network, index).await?;
-            Ok(Default::default())
+            Ok(())
         }
     }
 }

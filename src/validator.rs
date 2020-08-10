@@ -109,7 +109,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             )
             .await?;
             crate::common::display_validators(&client, &*validators, network).await?;
-            Ok(Default::default())
+            Ok(())
         }
         Validator::SetPayee { index, target } => {
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
@@ -119,7 +119,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
         }
         Validator::Address { index } => {
             crate::display_path(AccountType::Validator, &keystore()?, network, index).await?;
-            Ok(Default::default())
+            Ok(())
         }
     }
 }
