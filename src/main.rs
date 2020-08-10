@@ -133,10 +133,10 @@ enum Command {
 type Runtime = substrate_subxt::KusamaRuntime;
 
 fn parse_reward_destination(arg: &str) -> Result<RewardDestination, &'static str> {
-    Ok(match arg {
-        "Staked" => RewardDestination::Staked,
-        "Stash" => RewardDestination::Stash,
-        "Controller" => RewardDestination::Controller,
+    Ok(match &*arg.to_ascii_lowercase() {
+        "staked" => RewardDestination::Staked,
+        "stash" => RewardDestination::Stash,
+        "controller" => RewardDestination::Controller,
         _ => return Err("bad reward destination ― must be Staked, Stash, or Controller"),
     })
 }
