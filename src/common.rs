@@ -74,12 +74,12 @@ pub(crate) async fn display_validators(
                 total,
                 active,
                 unlocking,
-                claimed_rewards,
+                claimed_rewards: _,
             }) => {
                 println!(
                     "    Validator account: {}\n    Stash balance: {}\n    Amount at stake: \
-                     {}\n    Amount unlocking: {:?}\n    Rewards claimed: {:?}",
-                    stash.to_ss58check_with_version(network), total, active, unlocking, claimed_rewards
+                     {}\n    Amount unlocking: {:?}",
+                    stash.to_ss58check_with_version(network), total, active, unlocking
                 );
                 let store = ValidatorsStore {
                     stash: stash.clone(),

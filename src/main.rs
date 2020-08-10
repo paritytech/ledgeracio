@@ -126,6 +126,8 @@ enum Command {
     Validator(validator::Validator),
     /// Allowlist operations
     Allowlist(approved_validators::ACL),
+    /// Pretty-print the chain metadata
+    Metadata,
 }
 
 type Runtime = substrate_subxt::KusamaRuntime;
@@ -184,6 +186,10 @@ async fn main() -> Result<(), Error> {
             .await
             .map(drop),
         Command::Allowlist(l) => approved_validators::main(l, keystore, address_format).await,
+        Command::Metadata => {
+            println!("{:#?}", client.await?.metadata());
+            Ok(())
+        }
     }?;
     Ok(())
 }
