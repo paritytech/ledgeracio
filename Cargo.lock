@@ -781,7 +781,7 @@ dependencies = [
  "paste",
  "serde",
  "smallvec 1.4.1",
- "sp-arithmetic",
+ "sp-arithmetic 2.0.0-rc5 (git+https://github.com/paritytech/substrate)",
  "sp-core",
  "sp-inherents",
  "sp-io",
@@ -1605,6 +1605,7 @@ dependencies = [
  "rand 0.7.3",
  "regex",
  "sha2 0.9.1",
+ "sp-arithmetic 2.0.0-rc5 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt",
  "substrate-subxt",
  "thiserror",
@@ -3154,7 +3155,21 @@ dependencies = [
  "num-traits",
  "parity-scale-codec",
  "serde",
- "sp-debug-derive",
+ "sp-debug-derive 2.0.0-rc5 (git+https://github.com/paritytech/substrate)",
+ "sp-std",
+]
+
+[[package]]
+name = "sp-arithmetic"
+version = "2.0.0-rc5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b472a16a6653d84bbb9ce148c75e136f468b24479e1fbb3219dde88341fde89"
+dependencies = [
+ "integer-sqrt",
+ "num-traits",
+ "parity-scale-codec",
+ "serde",
+ "sp-debug-derive 2.0.0-rc5 (registry+https://github.com/rust-lang/crates.io-index)",
  "sp-std",
 ]
 
@@ -3316,7 +3331,7 @@ dependencies = [
  "secrecy",
  "serde",
  "sha2 0.8.2",
- "sp-debug-derive",
+ "sp-debug-derive 2.0.0-rc5 (git+https://github.com/paritytech/substrate)",
  "sp-externalities",
  "sp-runtime-interface",
  "sp-std",
@@ -3342,6 +3357,17 @@ dependencies = [
 name = "sp-debug-derive"
 version = "2.0.0-rc5"
 source = "git+https://github.com/paritytech/substrate#5f9e35531a854effbde948f9cb7df6ccd1ae2ddd"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "sp-debug-derive"
+version = "2.0.0-rc5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db388274224f88d94a0d2646353c690d6871d25f819c5da84fbc2d427fbb16a9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3426,7 +3452,7 @@ source = "git+https://github.com/paritytech/substrate#5f9e35531a854effbde948f9cb
 dependencies = [
  "parity-scale-codec",
  "serde",
- "sp-arithmetic",
+ "sp-arithmetic 2.0.0-rc5 (git+https://github.com/paritytech/substrate)",
  "sp-npos-elections-compact",
  "sp-std",
 ]
@@ -3475,7 +3501,7 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "sp-application-crypto",
- "sp-arithmetic",
+ "sp-arithmetic 2.0.0-rc5 (git+https://github.com/paritytech/substrate)",
  "sp-core",
  "sp-inherents",
  "sp-io",
@@ -3566,7 +3592,7 @@ dependencies = [
  "impl-serde 0.2.3",
  "ref-cast",
  "serde",
- "sp-debug-derive",
+ "sp-debug-derive 2.0.0-rc5 (git+https://github.com/paritytech/substrate)",
  "sp-std",
 ]
 
@@ -3765,7 +3791,6 @@ dependencies = [
 [[package]]
 name = "substrate-subxt"
 version = "0.11.0"
-source = "git+https://github.com/paritytech/substrate-subxt?branch=staking#7bad6c6909d3ec49b3e2f39e5fe6f64faa2715c3"
 dependencies = [
  "frame-metadata",
  "frame-support",
@@ -3799,7 +3824,6 @@ dependencies = [
 [[package]]
 name = "substrate-subxt-proc-macro"
 version = "0.11.0"
-source = "git+https://github.com/paritytech/substrate-subxt?branch=staking#7bad6c6909d3ec49b3e2f39e5fe6f64faa2715c3"
 dependencies = [
  "heck",
  "proc-macro-crate",

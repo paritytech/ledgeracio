@@ -17,6 +17,7 @@
 //! Nominator commands
 
 use super::{parse_address, parse_reward_destination, AccountType, Error, LedgeracioPath, StructOpt};
+use crate::common::pad;
 use core::{future::Future, pin::Pin};
 use substrate_subxt::{sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat, Ss58Codec},
                       staking::{BondedStore, LedgerStore, NominateCallExt, PayeeStore,
@@ -85,14 +86,24 @@ async fn display_nominators(
                 controller
             )
         })?;
+    let mut props = client.properties().clone();
+    let mut good_symbol = true;
+    for i in props.token_symbol.bytes() {
+        good_symbol &= i.is_ascii_uppercase()
+    }
+    if !good_symbol {
+        props.token_symbol = "".to_owned()
+    }
+
     println!(
-        "Nominator account: {}\nStash balance: {}\nAmount at stake: {}\nAmount unlocking: \
-         {:?}\nPayee: {:?}",
+        "Nominator account: {}\nStash balance: {} {sym}\nAmount at stake: {} {sym}\nAmount \
+         unlocking: {:?} {sym}\nPayee: {:?}",
         stash.to_ss58check_with_version(network),
-        total,
-        active,
+        pad(props.token_decimals, total),
+        pad(props.token_decimals, active),
         unlocking,
-        payee
+        payee,
+        sym = props.token_symbol,
     );
     let nominations = match client.fetch(&NominatorsStore { stash }, None).await? {
         None => {

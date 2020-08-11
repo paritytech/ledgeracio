@@ -19,7 +19,7 @@
 use super::{AccountId, AccountType, Error, LedgeracioPath};
 use substrate_subxt::{sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
                       system::AccountStoreExt,
-                      Client, KusamaRuntime, Signer};
+                      Client, KusamaRuntime, Properties, Signer};
 
 pub(crate) async fn fetch_validators(
     client: &Client<KusamaRuntime>,
@@ -76,17 +76,33 @@ pub(crate) async fn display_validators(
                 unlocking,
                 claimed_rewards: _,
             }) => {
+                let Properties {
+                    token_decimals,
+                    mut token_symbol,
+                    ..
+                } = client.properties().clone();
+                let mut good_symbol = true;
+                for i in token_symbol.bytes() {
+                    good_symbol &= i.is_ascii_uppercase()
+                }
+                if !good_symbol {
+                    token_symbol = "".to_owned()
+                }
                 println!(
-                    "    Validator account: {}\n    Stash balance: {}\n    Amount at stake: \
-                     {}\n    Amount unlocking: {:?}",
-                    stash.to_ss58check_with_version(network), total, active, unlocking
+                    "    Validator account: {}\n    Stash balance: {} {sym}\n    Amount at stake: \
+                     {} {sym}\n    Amount unlocking: {:?}",
+                    stash.to_ss58check_with_version(network),
+                    pad(token_decimals, total),
+                    pad(token_decimals, active),
+                    unlocking,
+                    sym = token_symbol
                 );
                 let store = ValidatorsStore {
                     stash: stash.clone(),
                 };
                 match client.fetch(&store, None).await? {
                     None => println!(
-                        "    validator {} has no preferences (this is a bug)\n",
+                        "    validator {} has no preferences ― it is probably inactive\n",
                         stash.to_ss58check_with_version(network)
                     ),
                     Some(prefs) => println!("    Prefs: {:?}\n", prefs),
@@ -95,4 +111,43 @@ pub(crate) async fn display_validators(
         }
     }
     Ok(())
+}
+
+pub fn pad(mut zeros: u8, value: u128) -> String {
+    if value == 0 {
+        return "0".to_owned()
+    }
+    let mut value = value.to_string();
+    let len = value.len();
+    assert_ne!(len, 0, "stringified numbers are never empty");
+    if len <= zeros.into() {
+        let mut buf = "0.".to_owned();
+        while len < zeros.into() {
+            buf.push('0');
+            zeros -= 1;
+        }
+        value = buf + &*value
+    } else {
+        value.insert(len - usize::from(zeros), '.');
+    }
+    while value.ends_with('0') {
+        value.pop();
+    }
+    if value.ends_with('.') {
+        value.pop();
+    }
+    value
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn padding_works() {
+        assert_eq!(pad(0, 100), "100".to_owned());
+        assert_eq!(pad(3, 100), "0.1".to_owned());
+        assert_eq!(pad(3, 10000), "10".to_owned());
+        assert_eq!(pad(3, 10001), "10.001".to_owned());
+        assert_eq!(pad(3, 10010), "10.01".to_owned());
+    }
 }

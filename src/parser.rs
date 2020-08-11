@@ -129,21 +129,3 @@ pub fn inspect<T: BufRead, U: Ss58Codec>(
     .map_err(|_| Error::new(ErrorKind::InvalidData, "Allowlist forged!".to_owned()))?;
     Ok(output)
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    #[test]
-    fn parse_test() {
-        assert_eq!(
-            parse::<_, AccountId>(BufReader::new(
-                &mut &br#"
-# this is a comment
-  ; this is also a comment
-"#[..]
-            ))
-            .unwrap(),
-            vec![]
-        )
-    }
-}
