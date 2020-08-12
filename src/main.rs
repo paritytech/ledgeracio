@@ -26,6 +26,7 @@ mod hardstore;
 mod mock;
 mod nominator;
 mod parser;
+mod payouts;
 mod validator;
 
 use clap::arg_enum;
