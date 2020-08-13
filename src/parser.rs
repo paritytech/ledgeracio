@@ -129,3 +129,58 @@ pub fn inspect<T: BufRead, U: Ss58Codec>(
     .map_err(|_| Error::new(ErrorKind::InvalidData, "Allowlist forged!".to_owned()))?;
     Ok(output)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ed25519_dalek::Keypair;
+    #[test]
+    fn accepts_own_output() {
+        const NONCE: u32 = 0;
+        const BUF: &[u8] = br#"
+5DArCreQ9Yk2HaGvxcRHS35qky3eXBD5BprPZQvbiJBfFY6Y
+; a comment
+
+# another comment
+   ; leading spaces
+   5GQvjFcJBCGTFeb2hvtQ9yRfbDNQajLJbW1yzgCra5uUTLvn
+5Cw8KtiVsBx4AK9SCzAMmXvprJiYuhRYwDUA4WHJ55ghYgYL
+5EhBPkiqA1rkoFZL6o87bSpgfTptHzp6nE3VkH4dRUed1Qdh
+5G3uDdTW8MeGW1QZR9FeZuN1exiVJZnUJ9ovyJexubiytNUj     
+5FbtadyFPdDZMiLYjdEwAyFqavVwzYueEYX8Z6fsL4UrxTXx
+5ENTEF2sAtM89XxdwRxwSKDF7hxX9udy7zdr2G4i8bRdbBH9
+5EWgCx3UMqzYt9vSf7GCHd2jhRUYF7GqVNeyPjpXxGkLV7b4
+5DFxRkcYqWa1CFkqKzM7meytTKyPMR72TPJjBb6S5zvnpuCz
+		"#;
+        let keypair = Keypair::generate(&mut rand::rngs::OsRng {});
+        let parsed: Vec<u8> = parse::<&[u8], AccountId>(
+            &mut BUF,
+            Ss58AddressFormat::SubstrateAccount,
+            &keypair.public,
+            &(&keypair.secret).into(),
+            NONCE,
+        )
+        .expect("no error");
+        let inspected = inspect::<&[u8], AccountId>(
+            &mut &*parsed,
+            Ss58AddressFormat::SubstrateAccount,
+            &keypair.public,
+        )
+        .expect("no error");
+        assert_eq!(
+            inspected,
+            &[
+                "Nonce: 0\n",
+                "5DArCreQ9Yk2HaGvxcRHS35qky3eXBD5BprPZQvbiJBfFY6Y",
+                "5GQvjFcJBCGTFeb2hvtQ9yRfbDNQajLJbW1yzgCra5uUTLvn",
+                "5Cw8KtiVsBx4AK9SCzAMmXvprJiYuhRYwDUA4WHJ55ghYgYL",
+                "5EhBPkiqA1rkoFZL6o87bSpgfTptHzp6nE3VkH4dRUed1Qdh",
+                "5G3uDdTW8MeGW1QZR9FeZuN1exiVJZnUJ9ovyJexubiytNUj",
+                "5FbtadyFPdDZMiLYjdEwAyFqavVwzYueEYX8Z6fsL4UrxTXx",
+                "5ENTEF2sAtM89XxdwRxwSKDF7hxX9udy7zdr2G4i8bRdbBH9",
+                "5EWgCx3UMqzYt9vSf7GCHd2jhRUYF7GqVNeyPjpXxGkLV7b4",
+                "5DFxRkcYqWa1CFkqKzM7meytTKyPMR72TPJjBb6S5zvnpuCz"
+            ][..]
+        );
+    }
+}
