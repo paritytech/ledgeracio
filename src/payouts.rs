@@ -21,7 +21,7 @@ use futures::{future::join3,
               stream::{FuturesUnordered, StreamExt as _}};
 use log::trace;
 use std::marker::PhantomData;
-use substrate_subxt::{sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat},
+use substrate_subxt::{sp_core::crypto::AccountId32 as AccountId,
                       sp_runtime::traits::Zero,
                       staking::{CurrentEraStore, ErasRewardPointsStore, HistoryDepthStore,
                                 LedgerStore, StakingLedger},
@@ -30,7 +30,6 @@ use substrate_subxt::{sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFor
 pub(crate) async fn display_payouts(
     controller: AccountId,
     client: &Client<KusamaRuntime>,
-    network: Ss58AddressFormat,
 ) -> Result<Vec<u32>, Error> {
     let store = LedgerStore {
         controller: controller.clone(),
