@@ -90,10 +90,11 @@ pub(crate) async fn display_validators(
                 }
                 println!(
                     "    Validator account: {}\n    Stash balance: {} {sym}\n    Amount at stake: \
-                     {} {sym}\n    Amount unlocking: {:?}",
+                     {} {sym}\nEras with unclaimed payouts: {:?}\n    Amount unlocking: {:?}",
                     stash.to_ss58check_with_version(network),
                     pad(token_decimals, total),
                     pad(token_decimals, active),
+                    crate::payouts::display_payouts(controller.clone(), client).await?,
                     unlocking,
                     sym = token_symbol
                 );
@@ -105,7 +106,10 @@ pub(crate) async fn display_validators(
                         "    validator {} has no preferences ― it is probably inactive\n",
                         stash.to_ss58check_with_version(network)
                     ),
-                    Some(prefs) => println!("    Prefs: {:?}\n", prefs),
+                    Some(prefs) => println!(
+                        "    Commission: {}%\n",
+                        pad(9, u128::from(prefs.commission.deconstruct()) * 100)
+                    ),
                 }
             }
         }
