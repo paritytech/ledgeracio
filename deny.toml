@@ -64,8 +64,14 @@ ignore = [
 # More documentation for the licenses section can be found here:
 # https://embarkstudios.github.io/cargo-deny/checks/licenses/cfg.html
 [licenses]
+
+
 # The lint level for crates which do not have a detectable license
-unlicensed = "deny"
+
+# FIXME: change this to `deny` after crates in https://github.com/Zondax/ledger-rs/
+# get proper license metadata
+unlicensed = "warn"
+
 # List of explictly allowed licenses
 # See https://spdx.org/licenses/ for list of possible licenses
 # [possible values: any SPDX 3.7 short identifier (+ optional exception)].
@@ -126,6 +132,7 @@ license-files = [
     # Each entry is a crate relative path, and the (opaque) hash of its contents
     { path = "LICENSE", hash = 0xbd0eed23 }
 ]
+
 [[licenses.clarify]]
 name = "webpki"
 expression = "ISC"
