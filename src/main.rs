@@ -17,6 +17,7 @@
 //! The main binary of Ledgeracio
 
 #![deny(clippy::all)]
+#![allow(clippy::non_ascii_literal)]
 #![forbid(unsafe_code)]
 #[cfg(feature = "allowlist")]
 mod approved_validators;
