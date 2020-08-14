@@ -1,0 +1,25 @@
+name:                   Cargo deny
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+    tags:
+      - v*
+    paths-ignore:
+      - 'README.md'
+jobs:
+  cargo-deny:
+    runs-on:            ubuntu-latest
+    steps:
+      - name:           Cancel Previous Runs
+        uses:           styfle/cancel-workflow-action@0.4.1
+        with:
+          access_token: ${{ github.token }}
+      - name:           Checkout sources & submodules
+        uses:           actions/checkout@master
+      - name:           Cargo deny
+        uses:           EmbarkStudios/cargo-deny-action@v1
+        with:
+          command:      "check --hide-inclusion-graph -c ./deny.toml"
