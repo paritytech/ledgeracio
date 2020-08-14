@@ -134,10 +134,7 @@ pub fn inspect<T: BufRead, U: Ss58Codec>(
 mod tests {
     use super::*;
     use ed25519_dalek::Keypair;
-    #[test]
-    fn accepts_own_output() {
-        const NONCE: u32 = 0;
-        const BUF: &[u8] = br#"
+    const BUF: &[u8] = br#"
 5DArCreQ9Yk2HaGvxcRHS35qky3eXBD5BprPZQvbiJBfFY6Y
 ; a comment
 
@@ -152,6 +149,9 @@ mod tests {
 5EWgCx3UMqzYt9vSf7GCHd2jhRUYF7GqVNeyPjpXxGkLV7b4
 5DFxRkcYqWa1CFkqKzM7meytTKyPMR72TPJjBb6S5zvnpuCz
 		"#;
+    const NONCE: u32 = 0;
+    #[test]
+    fn accepts_own_output() {
         let keypair = Keypair::generate(&mut rand::rngs::OsRng {});
         let parsed: Vec<u8> = parse::<&[u8], AccountId>(
             &mut BUF,
@@ -182,5 +182,24 @@ mod tests {
                 "5DFxRkcYqWa1CFkqKzM7meytTKyPMR72TPJjBb6S5zvnpuCz"
             ][..]
         );
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "called `Result::unwrap()` on an `Err` value: Custom { kind: InvalidData, \
+                    error: \"invalid network on line 1: Network mismatch: address \
+                    5DArCreQ9Yk2HaGvxcRHS35qky3eXBD5BprPZQvbiJBfFY6Y is for network substrate, \
+                    but you asked to use network polkadot\" }"
+    )]
+    fn rejects_bad_file() {
+        let keypair = Keypair::generate(&mut rand::rngs::OsRng {});
+        parse::<&[u8], AccountId>(
+            &mut BUF,
+            Ss58AddressFormat::PolkadotAccount,
+            &keypair.public,
+            &(&keypair.secret).into(),
+            NONCE,
+        )
+        .unwrap();
     }
 }

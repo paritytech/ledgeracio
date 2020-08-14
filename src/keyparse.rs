@@ -55,3 +55,14 @@ pub(crate) fn parse_secret(secret: &[u8], network: Ss58AddressFormat) -> Result<
     }
     Ok(keypair)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    #[should_panic(expected = "Ledgeracio secret keys are 88 bytes, not 87")]
+    fn too_short_rejected() { parse_secret(&[0; 87][..], Default::default()).unwrap(); }
+    #[test]
+    #[should_panic(expected = "Ledgeracio secret keys are 88 bytes, not 89")]
+    fn too_long_rejected() { parse_secret(&[0; 89][..], Default::default()).unwrap(); }
+}
