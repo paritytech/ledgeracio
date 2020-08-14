@@ -43,7 +43,7 @@ pub fn parse<T: BufRead, U: Ss58Codec>(
                     format!("parse error on line {}: {}", l, i),
                 )
             })?;
-        let () = crate::validate_network(trimmed, address_type, network).map_err(|i| {
+        crate::validate_network(trimmed, address_type, network).map_err(|i| {
             Error::new(
                 ErrorKind::InvalidData,
                 format!("invalid network on line {}: {}", l, i),
@@ -51,7 +51,7 @@ pub fn parse<T: BufRead, U: Ss58Codec>(
         })?;
         let bytes = trimmed.as_bytes();
         let current_len = v.len();
-        v.extend_from_slice(&[0u8; 64]);
+        v.extend_from_slice(&[0_u8; 64]);
         v[current_len..current_len + bytes.len()].copy_from_slice(bytes);
     }
     let total_len_bytes = u32::try_from((v.len() - 68) >> 6).unwrap().to_le_bytes();
@@ -73,9 +73,9 @@ pub fn inspect<T: BufRead, U: Ss58Codec>(
     pk: &PublicKey,
 ) -> std::io::Result<Vec<String>> {
     let mut output = vec![];
-    let mut nonce = [0u8; 4];
-    let mut length = [0u8; 4];
-    let mut sig = [0u8; 64];
+    let mut nonce = [0_u8; 4];
+    let mut length = [0_u8; 4];
+    let mut sig = [0_u8; 64];
     reader.read_exact(&mut nonce[..])?;
     reader.read_exact(&mut length[..])?;
     let mut digest = blake2b_simd::Params::new().hash_length(32).to_state();
@@ -85,7 +85,7 @@ pub fn inspect<T: BufRead, U: Ss58Codec>(
     reader.read_exact(&mut sig[..])?;
     output.push(format!("Nonce: {}\n", u32::from_le_bytes(nonce)));
     for i in 0..length {
-        let mut address = [0u8; 65];
+        let mut address = [0_u8; 65];
         reader.read_exact(&mut address[..64])?;
         digest.update(&address[..64]);
         assert_eq!(address[64], b'\0');
@@ -99,14 +99,15 @@ pub fn inspect<T: BufRead, U: Ss58Codec>(
                 format!("invalid UTF8 in address {}: {}", i, j),
             )
         })?;
-        let (_address, address_type): (AccountId, _) =
-            crate::parse_address(trimmed).map_err(|j| {
+        let address_type = crate::parse_address::<AccountId>(trimmed)
+            .map_err(|j| {
                 Error::new(
                     ErrorKind::InvalidData,
                     format!("parse error on line {}: {}", i, j),
                 )
-            })?;
-        let () = crate::validate_network(trimmed, address_type, network).map_err(|j| {
+            })?
+            .1;
+        crate::validate_network(trimmed, address_type, network).map_err(|j| {
             Error::new(
                 ErrorKind::InvalidData,
                 format!("invalid network on line {}: {}", i, j),
@@ -114,7 +115,7 @@ pub fn inspect<T: BufRead, U: Ss58Codec>(
         })?;
         output.push(trimmed.to_owned())
     }
-    let mut dummy = [0u8; 1];
+    let mut dummy = [0_u8; 1];
     if reader.read(&mut dummy)? != 0 {
         return Err(Error::new(
             ErrorKind::InvalidData,

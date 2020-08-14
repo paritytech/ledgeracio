@@ -47,7 +47,7 @@ impl std::str::FromStr for AccountType {
 
 /// Errors that can occur when creating a derivation path
 #[derive(::thiserror::Error, Debug)]
-pub enum DerivationPathError {
+pub enum Error {
     /// Unsupported network (not Polkadot or Kusama)
     #[error("Unsupported network {0:?}")]
     UnsupportedNetwork(Ss58AddressFormat),
@@ -62,12 +62,12 @@ pub const HARDENED: u32 = 1 << 31;
 /// The [SLIP-0044] code for Polkadot
 ///
 /// [SLIP-O044]: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-pub const POLKADOT: u32 = 0x80000162;
+pub const POLKADOT: u32 = 0x8000_0162;
 
 /// The [SLIP-0044] code for Kusama
 ///
 /// [SLIP-O044]: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-pub const KUSAMA: u32 = 0x800001b2;
+pub const KUSAMA: u32 = 0x8000_01b2;
 
 impl LedgeracioPath {
     /// Create a new Ledgeracio derivation path, or return an error if the path
@@ -76,15 +76,14 @@ impl LedgeracioPath {
         network: Ss58AddressFormat,
         account_type: AccountType,
         account_index: u32,
-    ) -> Result<Self, DerivationPathError> {
-        assert_eq!(HARDENED, 0x80000000);
+    ) -> Result<Self, Error> {
         let slip_0044_code = match network {
             Ss58AddressFormat::PolkadotAccount => POLKADOT,
             Ss58AddressFormat::KusamaAccount => KUSAMA,
-            bad_network => return Err(DerivationPathError::UnsupportedNetwork(bad_network)),
+            bad_network => return Err(Error::UnsupportedNetwork(bad_network)),
         };
         if account_index > HARDENED {
-            return Err(DerivationPathError::IndexTooLarge(account_index))
+            return Err(Error::IndexTooLarge(account_index))
         }
         Ok(Self(BIP44Path([
             HARDENED | 44,

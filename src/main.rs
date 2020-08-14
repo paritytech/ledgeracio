@@ -94,7 +94,7 @@ struct Ledgeracio {
 }
 
 arg_enum! {
-    #[derive(Debug)]
+    #[derive(Copy, Clone, Debug)]
     enum Network {
         // The Kusama (canary) network
         Kusama,
@@ -145,7 +145,7 @@ fn parse_reward_destination(arg: &str) -> Result<RewardDestination, &'static str
 }
 
 /// Parse an SS58 address
-pub fn parse_address<T: Ss58Codec>(arg: &str) -> Result<(T, u8), String> {
+pub(crate) fn parse_address<T: Ss58Codec>(arg: &str) -> Result<(T, u8), String> {
     Ss58Codec::from_string_with_version(arg)
         .map_err(|e| format!("{:?}", e))
         .map(|(x, y)| (x, y.into()))
@@ -206,7 +206,9 @@ fn validate_network(
     provided_network: u8,
     network: Ss58AddressFormat,
 ) -> Result<(), Error> {
-    if network != provided_network.try_into().unwrap() {
+    if network == provided_network.try_into().unwrap() {
+        Ok(())
+    } else {
         Err(format!(
             "Network mismatch: address {} is for network {}, but you asked to use network {}",
             address,
@@ -214,7 +216,5 @@ fn validate_network(
             String::from(network),
         )
         .into())
-    } else {
-        Ok(())
     }
 }

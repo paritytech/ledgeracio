@@ -117,22 +117,16 @@ async fn display_nominators(
         nominations.submitted_in, nominations.suppressed
     );
     for stash in nominations.targets.iter().cloned() {
-        match client
-            .fetch(
-                &BondedStore {
-                    stash: stash.clone(),
-                },
-                None,
-            )
-            .await?
-        {
-            Some(controller) => {
-                crate::common::display_validators(client, &[controller], network).await?
-            }
-            None => println!(
+        let bonded = BondedStore {
+            stash: stash.clone(),
+        };
+        if let Some(controller) = client.fetch(&bonded, None).await? {
+            crate::common::display_validators(client, &[controller], network).await?
+        } else {
+            println!(
                 "controller not found for stash {}\n",
                 stash.to_ss58check_with_version(network)
-            ),
+            )
         }
     }
     Ok(())
@@ -181,7 +175,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                 return Err("Validator set cannot be empty".to_owned().into())
             }
             let mut new_set = vec![];
-            for (address, provided_network) in set.into_iter() {
+            for (address, provided_network) in set {
                 if network != provided_network.try_into().unwrap() {
                     return Err(format!(
                         "Network mismatch: address {} is for network {}, but you asked to use \

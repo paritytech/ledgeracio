@@ -99,7 +99,7 @@ fn write(buf: &[&[u8]], path: &std::path::Path) -> std::io::Result<()> {
         .truncate(true)
         .open(path)?;
     for i in buf {
-        let () = f.write_all(i)?;
+        f.write_all(i)?;
     }
     Ok(())
 }
@@ -152,7 +152,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             write(
                 &[
                     MAGIC,
-                    &1u16.to_le_bytes(),
+                    &1_u16.to_le_bytes(),
                     &[network.into()],
                     &secretkey[..],
                     &publickey[..],
@@ -179,7 +179,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                     .to_owned()
                     .into())
             }
-            if secret[21..23] != [1u8, 0][..] {
+            if secret[21..23] != [1, 0][..] {
                 return Err(format!(
                     "Expected a version 1 secret key, but got version {}",
                     u16::from_le_bytes(secret[21..23].try_into().unwrap())
@@ -226,7 +226,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             }
             let network = Ss58AddressFormat::try_from(&*network.to_ascii_lowercase())
                 .map_err(|()| format!("invalid network {}", network))?;
-            let mut pk = [0u8; 32];
+            let mut pk = [0_u8; 32];
             assert_eq!(
                 base64::decode_config_slice(&*data, base64::STANDARD, &mut pk)?,
                 pk.len()

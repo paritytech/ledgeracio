@@ -92,11 +92,11 @@ pub(crate) async fn display_payouts(
     let mut eras = vec![];
     while let Some(e) = futures.next().await {
         let (points, era) = e?;
-        if points != 0 {
+        if points == 0 {
+            trace!("Skipping era {} as it has no points", era);
+        } else {
             trace!("Found {} points for era {}", points, era);
             eras.push(era);
-        } else {
-            trace!("Skipping era {} as it has no points", era);
         }
     }
     Ok(eras)

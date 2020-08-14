@@ -36,7 +36,7 @@ pub(crate) async fn fetch_validators(
         let signer = keystore.signer(path).await?;
         return Ok(vec![signer.account_id().clone()])
     }
-    let mut index = 0u32;
+    let mut index = 0_u32;
     loop {
         index += 1;
         assert!(index > 0);
