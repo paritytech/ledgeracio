@@ -81,8 +81,8 @@ pub(crate) async fn display_payouts(
                 era_reward_points
                     .individual
                     .get(&validator_stash)
-                    .map(|points| *points)
-                    .unwrap_or_else(|| Zero::zero()),
+                    .cloned()
+                    .unwrap_or_else(Zero::zero),
                 era,
             ));
             s
