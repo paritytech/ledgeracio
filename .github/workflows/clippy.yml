@@ -21,6 +21,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - run: sudo apt-get install libudev-dev
       - run: rustup component add clippy
       - uses: actions-rs/cargo@v1
         with:
