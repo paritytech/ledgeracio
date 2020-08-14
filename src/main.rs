@@ -23,6 +23,7 @@ mod approved_validators;
 mod common;
 mod derivation;
 mod hardstore;
+mod keyparse;
 mod mock;
 mod nominator;
 mod parser;

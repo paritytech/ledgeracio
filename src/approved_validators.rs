@@ -17,14 +17,11 @@
 //! Routines for handling approved validators
 
 use super::{Error, StructOpt};
-use crate::{AccountId, Ss58AddressFormat};
-use std::{convert::{TryFrom, TryInto},
-          fs::OpenOptions,
-          io::Write,
-          os::unix::fs::OpenOptionsExt,
+use crate::{keyparse::parse_secret, parser::parse as parse_allowlist, AccountId, Ss58AddressFormat};
+use ed25519_dalek::Keypair;
+use std::{convert::TryFrom, fs::OpenOptions, io::Write, os::unix::fs::OpenOptionsExt,
           path::PathBuf};
 
-const MAGIC: &[u8] = &*b"Ledgeracio Secret Key";
 #[derive(StructOpt, Debug)]
 pub(crate) enum ACL {
     /// Upload a new approved validator list.  This list must be signed.
@@ -109,7 +106,6 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
     hardware: T,
     network: Ss58AddressFormat,
 ) -> Result<(), Error> {
-    use ed25519_dalek::Keypair;
     use std::fs;
 
     match acl {
@@ -128,11 +124,10 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
         }
         ACL::GenKey { mut file } => {
             if file.extension().is_some() {
-                return Err(format!(
+                Err(format!(
                     "please provide a filename with no extension, not {}",
                     file.display()
-                )
-                .into())
+                ))?
             }
             let keypair = Keypair::generate(&mut rand::rngs::OsRng {});
             let secretkey = keypair.secret.to_bytes();
@@ -151,7 +146,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             file.set_extension("sec");
             write(
                 &[
-                    MAGIC,
+                    crate::keyparse::MAGIC,
                     &1u16.to_le_bytes(),
                     &[network.into()],
                     &secretkey[..],
@@ -169,37 +164,9 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
         } => {
             let file = std::io::BufReader::new(fs::File::open(file)?);
             let secret: Vec<u8> = fs::read(secret)?;
-            if secret.len() != 88 {
-                return Err(
-                    format!("Ledgeracio secret keys are 88 bytes, not {}", secret.len()).into(),
-                )
-            }
-            if &secret[..21] != MAGIC {
-                return Err("Not a Ledgeracio secret key ― wrong magic number"
-                    .to_owned()
-                    .into())
-            }
-            if secret[21..23] != [1u8, 0][..] {
-                return Err(format!(
-                    "Expected a version 1 secret key, but got version {}",
-                    u16::from_le_bytes(secret[21..23].try_into().unwrap())
-                )
-                .into())
-            }
-            if secret[23] != u8::from(network) {
-                return Err(format!(
-                    "Expected a key for network {}, but got a key for network {}",
-                    network,
-                    secret[23]
-                        .try_into()
-                        .unwrap_or_else(|()| Ss58AddressFormat::Custom(secret[23]))
-                )
-                .into())
-            }
-
-            let sk = (&ed25519_dalek::SecretKey::from_bytes(&secret[24..56])?).into();
-            let pk = ed25519_dalek::PublicKey::from_bytes(&secret[56..88])?;
-            let signed = crate::parser::parse::<_, AccountId>(file, network, &pk, &sk, nonce)?;
+            let Keypair { public, secret } = parse_secret(&*secret, network)?;
+            let signed =
+                parse_allowlist::<_, AccountId>(file, network, &public, &(&secret).into(), nonce)?;
             fs::write(output, signed)?;
             Ok(())
         }
@@ -222,7 +189,10 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                 str::from_utf8(&captures[3]).unwrap(),
             );
             if version != "1" {
-                return Err("Only version 1 keys are supported".to_owned().into())
+                Err("Only version 1 keys are supported".to_owned())?
+            }
+            if data.len() != 44 {
+                Err("base64-encoded ed25519 public keys are 44 bytes".to_owned())?
             }
             let network = Ss58AddressFormat::try_from(&*network.to_ascii_lowercase())
                 .map_err(|()| format!("invalid network {}", network))?;
