@@ -17,10 +17,11 @@
 //! Routines for handling approved validators
 
 use super::{Error, StructOpt};
-use crate::{keyparse::parse_secret, parser::parse as parse_allowlist, AccountId, Ss58AddressFormat};
+use crate::{keyparse::{parse_public, parse_secret},
+            parser::parse as parse_allowlist,
+            AccountId, Ss58AddressFormat};
 use ed25519_dalek::Keypair;
-use std::{convert::TryFrom, fs::OpenOptions, io::Write, os::unix::fs::OpenOptionsExt,
-          path::PathBuf};
+use std::{fs::OpenOptions, io::Write, os::unix::fs::OpenOptionsExt, path::PathBuf};
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum ACL {
@@ -106,16 +107,25 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
     hardware: T,
     network: Ss58AddressFormat,
 ) -> Result<(), Error> {
-    use std::fs;
+    use std::{fs,
+              io::{BufReader, BufWriter}};
 
     match acl {
         ACL::GetKey => {
             let s: [u8; 32] = hardware()?.get_pubkey().await?;
-            println!("Public key is {}", hex::encode(s));
+            println!("Public key is {}", base64::encode(s));
             Ok(())
         }
         ACL::SetKey { key } => {
-            let key = ed25519_dalek::PublicKey::from_bytes(&*fs::read(key)?)?;
+            let (key, key_network) = parse_public(&*fs::read(key)?)?;
+            if key_network != network {
+                return Err(format!(
+                    "Key is for network {}, not {}",
+                    String::from(key_network),
+                    String::from(network)
+                )
+                .into())
+            }
             hardware()?.set_pubkey(&key.as_bytes()).await
         }
         ACL::Upload { path } => {
@@ -163,7 +173,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             output,
             nonce,
         } => {
-            let file = std::io::BufReader::new(fs::File::open(file)?);
+            let file = BufReader::new(fs::File::open(file)?);
             let secret: Vec<u8> = fs::read(secret)?;
             let Keypair { public, secret } = parse_secret(&*secret, network)?;
             let signed =
@@ -176,37 +186,10 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             public,
             output,
         } => {
-            use regex::bytes::Regex;
-            use std::str;
-            let file = std::io::BufReader::new(fs::File::open(file)?);
-            let pk = fs::read(public)?;
-            let re = Regex::new(r"^Ledgeracio version ([1-9][0-9]*) public key for network ([[:alpha:]]+)\n([[:alnum:]/+]+=)\n$").unwrap();
-            let captures = re
-                .captures(&pk)
-                .ok_or_else(|| "Invalid public key".to_owned())?;
-            let (version, network, data) = (
-                str::from_utf8(&captures[1]).unwrap(),
-                str::from_utf8(&captures[2]).unwrap(),
-                str::from_utf8(&captures[3]).unwrap(),
-            );
-            if version != "1" {
-                return Err("Only version 1 keys are supported".to_owned().into())
-            }
-            if data.len() != 44 {
-                return Err("base64-encoded ed25519 public keys are 44 bytes"
-                    .to_owned()
-                    .into())
-            }
-            let network = Ss58AddressFormat::try_from(&*network.to_ascii_lowercase())
-                .map_err(|()| format!("invalid network {}", network))?;
-            let mut pk = [0_u8; 32];
-            assert_eq!(
-                base64::decode_config_slice(&*data, base64::STANDARD, &mut pk)?,
-                pk.len()
-            );
-            let pk = ed25519_dalek::PublicKey::from_bytes(&pk[..])?;
+            let file = BufReader::new(fs::File::open(file)?);
+            let (pk, network) = parse_public(&*fs::read(public)?)?;
             let stdout = std::io::stdout();
-            let mut output = std::io::BufWriter::new(match output {
+            let mut output = BufWriter::new(match output {
                 None => Box::new(stdout.lock()) as Box<dyn std::io::Write>,
                 Some(path) => Box::new(
                     OpenOptions::new()

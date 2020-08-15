@@ -17,8 +17,10 @@
 //! Routines for parsing public and secret keys
 
 use super::Error;
-use core::convert::TryInto;
 use ed25519_dalek::{ExpandedSecretKey, Keypair, PublicKey};
+use regex::bytes::Regex;
+use std::{convert::{TryFrom, TryInto},
+          str};
 use substrate_subxt::sp_core::crypto::Ss58AddressFormat;
 
 pub(crate) const MAGIC: &[u8] = &*b"Ledgeracio Secret Key";
@@ -55,6 +57,35 @@ pub(crate) fn parse_secret(secret: &[u8], network: Ss58AddressFormat) -> Result<
         return Err("Public and secret keys don’t match".to_owned().into())
     }
     Ok(keypair)
+}
+
+pub(crate) fn parse_public(unparsed: &[u8]) -> Result<(PublicKey, Ss58AddressFormat), Error> {
+    let re = Regex::new(r"^Ledgeracio version ([1-9][0-9]*) public key for network ([[:alpha:]]+)\n([[:alnum:]/+]+=)\n$").unwrap();
+    let captures = re
+        .captures(&unparsed)
+        .ok_or_else(|| "Invalid public key".to_owned())?;
+    let (version, network, data) = (
+        str::from_utf8(&captures[1]).unwrap(),
+        str::from_utf8(&captures[2]).unwrap(),
+        str::from_utf8(&captures[3]).unwrap(),
+    );
+    if version != "1" {
+        return Err("Only version 1 keys are supported".to_owned().into())
+    }
+    if data.len() != 44 {
+        return Err("base64-encoded ed25519 public keys are 44 bytes"
+            .to_owned()
+            .into())
+    }
+    let network = Ss58AddressFormat::try_from(&*network.to_ascii_lowercase())
+        .map_err(|()| format!("invalid network {}", network))?;
+    let mut pk = [0_u8; 32];
+    assert_eq!(
+        base64::decode_config_slice(&*data, base64::STANDARD, &mut pk)?,
+        pk.len()
+    );
+    let pk = ed25519_dalek::PublicKey::from_bytes(&pk[..])?;
+    Ok((pk, network))
 }
 
 #[cfg(test)]
