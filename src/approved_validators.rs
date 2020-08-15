@@ -101,7 +101,6 @@ fn write(buf: &[&[u8]], path: &std::path::Path) -> std::io::Result<()> {
     Ok(())
 }
 
-#[allow(clippy::too_many_lines)]
 pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
     acl: ACL,
     hardware: T,
