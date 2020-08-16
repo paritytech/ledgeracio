@@ -16,13 +16,17 @@
 
 //! Nominator commands
 
-use super::{parse_address, parse_reward_destination, AccountType, Error, LedgeracioPath, StructOpt};
-use crate::common::pad;
+use super::{common::{get_stash, pad},
+            parse_address, parse_reward_destination,
+            payouts::display_payouts,
+            AccountType, Error, LedgeracioPath, StructOpt};
 use core::{future::Future, pin::Pin};
+use futures::stream::{FuturesUnordered, StreamExt as _};
 use substrate_subxt::{sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat, Ss58Codec},
-                      staking::{BondedStore, LedgerStore, NominateCallExt, PayeeStore,
-                                RewardDestination, SetPayeeCallExt},
-                      Client, KusamaRuntime};
+                      staking::{BondedStore, NominateCallExt, NominatorsStore, PayeeStore,
+                                PayoutStakersCallExt, RewardDestination, SetPayeeCallExt,
+                                StakingLedger},
+                      Client, KusamaRuntime, Signer};
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum Nominator {
@@ -34,7 +38,7 @@ pub(crate) enum Nominator {
     /// Show the specified stash controller, or all if none is specified.
     Show { index: Option<u32> },
     /// Claim a validation payout
-    Claim { index: Option<u32> },
+    Claim { index: u32 },
     /// Nominate a new validator set
     #[structopt(name = "nominate")]
     Nominate {
@@ -58,34 +62,6 @@ async fn display_nominators(
     client: &Client<KusamaRuntime>,
     network: Ss58AddressFormat,
 ) -> Result<(), Error> {
-    use substrate_subxt::staking::{NominatorsStore, StakingLedger};
-    let store = LedgerStore {
-        controller: controller.clone(),
-    };
-    let StakingLedger {
-        stash,
-        total,
-        active,
-        unlocking,
-        claimed_rewards: _, // not updated for nominators
-    } = client
-        .fetch(&store, None)
-        .await?
-        .ok_or_else(|| format!("No nominator account found for controller {}", controller))?;
-    let payee = client
-        .fetch(
-            &PayeeStore {
-                stash: stash.clone(),
-            },
-            None,
-        )
-        .await?
-        .ok_or_else(|| {
-            format!(
-                "No payee found for controller {} (this is a bug)",
-                controller
-            )
-        })?;
     let mut props = client.properties().clone();
     let mut good_symbol = true;
     for i in props.token_symbol.bytes() {
@@ -94,6 +70,23 @@ async fn display_nominators(
     if !good_symbol {
         props.token_symbol = "".to_owned()
     }
+
+    let StakingLedger {
+        stash,
+        total,
+        active,
+        unlocking,
+        claimed_rewards: _, // not updated for nominators
+    } = get_stash(client, controller.clone(), network).await?;
+    let store = PayeeStore {
+        stash: stash.clone(),
+    };
+    let payee = client.fetch(&store, None).await?.ok_or_else(|| {
+        format!(
+            "No payee found for controller {} (this is a bug)",
+            controller
+        )
+    })?;
 
     println!(
         "Nominator account: {}\nStash balance: {} {sym}\nAmount at stake: {} {sym}\nAmount \
@@ -105,6 +98,7 @@ async fn display_nominators(
         payee,
         sym = props.token_symbol,
     );
+
     let nominations = match client.fetch(&NominatorsStore { stash }, None).await? {
         None => {
             println!("Nominations: None (yet)");
@@ -112,10 +106,12 @@ async fn display_nominators(
         }
         Some(n) => n,
     };
+
     println!(
         "Era nominations submitted: {}\nNominations suppressed: {}\nTargets:\n",
         nominations.submitted_in, nominations.suppressed
     );
+
     for stash in nominations.targets.iter().cloned() {
         let bonded = BondedStore {
             stash: stash.clone(),
@@ -167,7 +163,43 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             Ok(())
         }
 
-        Nominator::Claim { index } => unimplemented!("claiming payment for {:?}", index),
+        Nominator::Claim { index } => {
+            let client = client.await?;
+            let keystore = keystore()?;
+            let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
+            let signer = keystore.signer(path).await?;
+            let nominator = signer.account_id().clone();
+            let stash = get_stash(&client, nominator.clone(), network).await?.stash;
+            let nominations = match client.fetch(&NominatorsStore { stash }, None).await? {
+                None => {
+                    println!("Nominations: None (yet)");
+                    return Ok(())
+                }
+                Some(n) => n,
+            };
+            let mut fut =
+                FuturesUnordered::<Pin<Box<dyn Future<Output = Result<(), Error>>>>>::new();
+            for validator_stash in nominations.targets.iter().cloned() {
+                let (client, signer) = (client.clone(), signer.clone());
+                fut.push(Box::pin(async move {
+                    let validator_controller =
+                        crate::common::get_controller(&client, validator_stash.clone(), network)
+                            .await?;
+                    let eras =
+                        display_payouts(validator_controller.clone(), &client, network).await?;
+                    println!("Eras: {:?}", eras);
+                    for era in eras {
+                        client.payout_stakers(&signer, &validator_stash, era).await?;
+                    }
+                    Ok(())
+                }))
+            }
+            println!("Spawning futures");
+            while let Some(e) = fut.next().await {
+                e?
+            }
+            Ok(())
+        }
         Nominator::Nominate { index, set } => {
             let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
             let signer = keystore()?.signer(path).await?;

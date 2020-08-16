@@ -18,6 +18,7 @@
 
 use super::{AccountId, AccountType, Error, LedgeracioPath};
 use substrate_subxt::{sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
+                      staking::{BondedStore, LedgerStore, StakingLedger, ValidatorsStore},
                       system::AccountStoreExt,
                       Client, KusamaRuntime, Properties, Signer};
 
@@ -50,6 +51,40 @@ pub(crate) async fn fetch_validators(
     }
 }
 
+pub(crate) async fn get_stash(
+    client: &Client<KusamaRuntime>,
+    controller: AccountId,
+    network: Ss58AddressFormat,
+) -> Result<StakingLedger<AccountId, u128>, Error> {
+    let store = LedgerStore {
+        controller: controller.clone(),
+    };
+    client.fetch(&store, None).await?.ok_or_else(|| {
+        format!(
+            "No stash account found for controller {}",
+            controller.to_ss58check_with_version(network)
+        )
+        .into()
+    })
+}
+
+pub(crate) async fn get_controller(
+    client: &Client<KusamaRuntime>,
+    stash: AccountId,
+    network: Ss58AddressFormat,
+) -> Result<AccountId, Error> {
+    let store = BondedStore {
+        stash: stash.clone(),
+    };
+    client.fetch(&store, None).await?.ok_or_else(|| {
+        format!(
+            "No controller account found for stash {}",
+            stash.to_ss58check_with_version(network)
+        )
+        .into()
+    })
+}
+
 pub(crate) enum AddressSource<'a> {
     Device(Option<u32>, &'a crate::HardStore),
 }
@@ -59,59 +94,48 @@ pub(crate) async fn display_validators(
     nominations: &[AccountId],
     network: Ss58AddressFormat,
 ) -> Result<(), Error> {
-    use substrate_subxt::staking::{LedgerStore, StakingLedger, ValidatorsStore};
     for controller in nominations {
-        let store = LedgerStore {
-            controller: controller.clone(),
+        let StakingLedger {
+            stash,
+            total,
+            active,
+            unlocking,
+            claimed_rewards: _,
+        } = get_stash(client, controller.clone(), network).await?;
+        let Properties {
+            token_decimals,
+            mut token_symbol,
+            ..
+        } = client.properties().clone();
+        let mut good_symbol = true;
+        for i in token_symbol.bytes() {
+            good_symbol &= i.is_ascii_uppercase()
+        }
+        if !good_symbol {
+            token_symbol = "".to_owned()
+        }
+        println!(
+            "    Validator account: {}\n    Stash balance: {} {sym}\n    Amount at stake: {} \
+             {sym}\nEras with unclaimed payouts: {:?}\n    Amount unlocking: {:?}",
+            stash.to_ss58check_with_version(network),
+            pad(token_decimals, total),
+            pad(token_decimals, active),
+            crate::payouts::display_payouts(controller.clone(), client, network).await?,
+            unlocking,
+            sym = token_symbol
+        );
+        let store = ValidatorsStore {
+            stash: stash.clone(),
         };
         match client.fetch(&store, None).await? {
             None => println!(
-                "validator {} not found",
-                controller.to_ss58check_with_version(network)
+                "    validator {} has no preferences ― it is probably inactive\n",
+                stash.to_ss58check_with_version(network)
             ),
-            Some(StakingLedger {
-                stash,
-                total,
-                active,
-                unlocking,
-                claimed_rewards: _,
-            }) => {
-                let Properties {
-                    token_decimals,
-                    mut token_symbol,
-                    ..
-                } = client.properties().clone();
-                let mut good_symbol = true;
-                for i in token_symbol.bytes() {
-                    good_symbol &= i.is_ascii_uppercase()
-                }
-                if !good_symbol {
-                    token_symbol = "".to_owned()
-                }
-                println!(
-                    "    Validator account: {}\n    Stash balance: {} {sym}\n    Amount at stake: \
-                     {} {sym}\nEras with unclaimed payouts: {:?}\n    Amount unlocking: {:?}",
-                    stash.to_ss58check_with_version(network),
-                    pad(token_decimals, total),
-                    pad(token_decimals, active),
-                    crate::payouts::display_payouts(controller.clone(), client).await?,
-                    unlocking,
-                    sym = token_symbol
-                );
-                let store = ValidatorsStore {
-                    stash: stash.clone(),
-                };
-                match client.fetch(&store, None).await? {
-                    None => println!(
-                        "    validator {} has no preferences ― it is probably inactive\n",
-                        stash.to_ss58check_with_version(network)
-                    ),
-                    Some(prefs) => println!(
-                        "    Commission: {}%\n",
-                        pad(9, u128::from(prefs.commission.deconstruct()) * 100)
-                    ),
-                }
-            }
+            Some(prefs) => println!(
+                "    Commission: {}%\n",
+                pad(9, u128::from(prefs.commission.deconstruct()) * 100)
+            ),
         }
     }
     Ok(())

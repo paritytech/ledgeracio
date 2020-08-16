@@ -16,52 +16,39 @@
 
 //! Payouts handling
 
-use crate::Error;
+use crate::{common::get_stash, Error};
 use futures::{future::join3,
               stream::{FuturesUnordered, StreamExt as _}};
 use log::trace;
 use std::marker::PhantomData;
-use substrate_subxt::{sp_core::crypto::AccountId32 as AccountId,
+use substrate_subxt::{sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat},
                       sp_runtime::traits::Zero,
                       staking::{CurrentEraStore, ErasRewardPointsStore, HistoryDepthStore,
-                                LedgerStore, StakingLedger},
+                                StakingLedger},
                       Client, KusamaRuntime};
 
+static HISTORY_DEPTH: HistoryDepthStore<KusamaRuntime> = HistoryDepthStore {
+    _runtime: PhantomData,
+};
+static CURRENT_ERA: CurrentEraStore<KusamaRuntime> = CurrentEraStore {
+    _runtime: PhantomData,
+};
 pub(crate) async fn display_payouts(
     controller: AccountId,
     client: &Client<KusamaRuntime>,
+    network: Ss58AddressFormat,
 ) -> Result<Vec<u32>, Error> {
-    let store = LedgerStore {
-        controller: controller.clone(),
-    };
-    let history_depth = client.fetch_or_default(
-        &HistoryDepthStore {
-            _runtime: PhantomData,
-        },
-        None,
-    );
-    let current_era = client.fetch_or_default(
-        &CurrentEraStore {
-            _runtime: PhantomData,
-        },
-        None,
-    );
-    let fetch_account_info = async {
-        let StakingLedger {
-            stash,
-            claimed_rewards,
-            ..
-        } = client
-            .fetch(&store, None)
-            .await?
-            .ok_or_else(|| format!("No nominator account found for controller {}", controller))?;
-        let res: Result<_, Error> = Ok((stash, claimed_rewards));
-        res
-    };
+    let history_depth = client.fetch_or_default(&HISTORY_DEPTH, None);
+    let current_era = client.fetch_or_default(&CURRENT_ERA, None);
+    let account_info = get_stash(&client, controller.clone(), network);
     let (history_depth, account_info, current_era) =
-        join3(history_depth, fetch_account_info, current_era).await;
+        join3(history_depth, account_info, current_era).await;
     let history_depth = history_depth?;
-    let (validator_stash, claimed_rewards): (AccountId, _) = account_info?;
+    let StakingLedger {
+        stash,
+        claimed_rewards,
+        ..
+    } = account_info?;
     let current_era = current_era?;
     let history_start = current_era.saturating_sub(history_depth);
     let mut futures = FuturesUnordered::new();
@@ -70,7 +57,7 @@ pub(crate) async fn display_payouts(
         if claimed_rewards.binary_search(&era).is_ok() {
             continue
         }
-        let validator_stash = validator_stash.clone();
+        let stash = stash.clone();
         let future = async move {
             let rewards = ErasRewardPointsStore {
                 index: era,
@@ -80,7 +67,7 @@ pub(crate) async fn display_payouts(
             let s: Result<_, Error> = Ok((
                 era_reward_points
                     .individual
-                    .get(&validator_stash)
+                    .get(&stash)
                     .cloned()
                     .unwrap_or_else(Zero::zero),
                 era,

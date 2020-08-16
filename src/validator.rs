@@ -14,15 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{parse_address, parse_reward_destination, AccountType, AddressSource, Error,
-            LedgeracioPath, StructOpt};
+use super::{parse_address, parse_reward_destination, payouts::display_payouts, AccountType,
+            AddressSource, Error, LedgeracioPath, StructOpt};
 use codec::Decode;
 use core::{future::Future, pin::Pin};
 use substrate_subxt::{session::SetKeysCallExt,
                       sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat},
                       sp_runtime::Perbill,
-                      staking::{BondedStore, RewardDestination, SetPayeeCallExt, ValidateCallExt,
-                                ValidatorPrefs},
+                      staking::{BondedStore, PayoutStakersCallExt, RewardDestination,
+                                SetPayeeCallExt, ValidateCallExt, ValidatorPrefs},
                       Client, KusamaRuntime, SessionKeys};
 
 #[derive(StructOpt, Debug)]
@@ -36,6 +36,8 @@ pub(crate) enum Validator {
     /// Show status of the given Validator Controller key, or all if none is
     /// specified.
     Status { index: Option<u32> },
+    /// Claim a validation payout
+    Claim { index: u32 },
     /// Announce intention to validate
     Announce { index: u32, commission: Option<u32> },
     /// Replace a session key
@@ -90,6 +92,28 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             };
             let signer = keystore()?.signer(path).await?;
             client.await?.validate(&signer, prefs).await?;
+            Ok(())
+        }
+        Validator::Claim { index } => {
+            let keystore = keystore()?;
+            let client = client.await?;
+            // These are *controller*, not *stash*, accounts.
+            let validators = crate::common::fetch_validators(
+                &client,
+                AddressSource::Device(Some(index), &keystore),
+                network,
+                AccountType::Validator,
+            )
+            .await?;
+            let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
+            let signer = keystore.signer(path).await?;
+            // FIXME these should be done in parallel
+            for ref validator_stash in validators {
+                let eras = display_payouts(validator_stash.clone(), &client, network).await?;
+                for era in eras {
+                    client.payout_stakers(&signer, validator_stash, era).await?;
+                }
+            }
             Ok(())
         }
         Validator::ReplaceKey { index, keys } => {
