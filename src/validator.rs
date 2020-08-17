@@ -19,7 +19,8 @@ use super::{parse_address, parse_reward_destination, AccountType, AddressSource,
 use codec::Decode;
 use core::{future::Future, pin::Pin};
 use substrate_subxt::{session::SetKeysCallExt,
-                      sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat},
+                      sp_core::{crypto::{AccountId32 as AccountId, Ss58AddressFormat},
+                                H256},
                       sp_runtime::Perbill,
                       staking::{BondedStore, RewardDestination, SetPayeeCallExt, ValidateCallExt,
                                 ValidatorPrefs},
@@ -69,7 +70,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
     client: Pin<Box<dyn Future<Output = Result<Client<KusamaRuntime>, Error>>>>,
     network: Ss58AddressFormat,
     keystore: T,
-) -> Result<(), Error> {
+) -> Result<Option<H256>, Error> {
     match cmd {
         Validator::ShowAddress {
             address: (stash, provided_network),
@@ -81,7 +82,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                 None => return Err("Controller not found for stash".to_owned().into()),
             };
             crate::common::display_validators(&client, &[controller], network).await?;
-            Ok(())
+            Ok(None)
         }
         Validator::Announce { index, commission } => {
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
@@ -89,14 +90,12 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                 commission: Perbill::from_parts(commission.unwrap_or(u32::max_value())),
             };
             let signer = keystore()?.signer(path).await?;
-            client.await?.validate(&signer, prefs).await?;
-            Ok(())
+            Ok(Some(client.await?.validate(&signer, prefs).await?))
         }
         Validator::ReplaceKey { index, keys } => {
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
             let signer = keystore()?.signer(path).await?;
-            client.await?.set_keys(&signer, keys, vec![]).await?;
-            Ok(())
+            Ok(Some(client.await?.set_keys(&signer, keys, vec![]).await?))
         }
         Validator::Status { index } => {
             let client = client.await?;
@@ -109,17 +108,17 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             )
             .await?;
             crate::common::display_validators(&client, &*validators, network).await?;
-            Ok(())
+            Ok(None)
         }
         Validator::SetPayee { index, target } => {
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
             let signer = keystore()?.signer(path).await?;
             client.await?.set_payee(&signer, target).await?;
-            Ok(())
+            Ok(None)
         }
         Validator::Address { index } => {
             crate::display_path(AccountType::Validator, &keystore()?, network, index).await?;
-            Ok(())
+            Ok(None)
         }
     }
 }

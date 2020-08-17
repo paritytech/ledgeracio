@@ -22,6 +22,7 @@ use crate::{keyparse::{parse_public, parse_secret},
             AccountId, Ss58AddressFormat};
 use ed25519_dalek::Keypair;
 use std::{fs::OpenOptions, io::Write, os::unix::fs::OpenOptionsExt, path::PathBuf};
+use substrate_subxt::sp_core::H256;
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum ACL {
@@ -106,7 +107,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
     acl: ACL,
     hardware: T,
     network: Ss58AddressFormat,
-) -> Result<(), Error> {
+) -> Result<Option<H256>, Error> {
     use std::{fs,
               io::{BufReader, BufWriter}};
 
@@ -114,7 +115,6 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
         ACL::GetKey => {
             let s: [u8; 32] = hardware()?.get_pubkey().await?;
             println!("Public key is {}", base64::encode(s));
-            Ok(())
         }
         ACL::SetKey { key } => {
             let (key, key_network) = parse_public(&*fs::read(key)?)?;
@@ -126,11 +126,11 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                 )
                 .into())
             }
-            hardware()?.set_pubkey(&key.as_bytes()).await
+            hardware()?.set_pubkey(&key.as_bytes()).await?
         }
         ACL::Upload { path } => {
             let allowlist = fs::read(path)?;
-            hardware()?.allowlist_upload(&allowlist).await
+            hardware()?.allowlist_upload(&allowlist).await?
         }
         ACL::GenKey { mut file } => {
             if file.extension().is_some() {
@@ -165,7 +165,6 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                 ],
                 &file,
             )?;
-            Ok(())
         }
         ACL::Sign {
             file,
@@ -179,7 +178,6 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             let signed =
                 parse_allowlist::<_, AccountId>(file, network, &public, &(&secret).into(), nonce)?;
             fs::write(output, signed)?;
-            Ok(())
         }
         ACL::Inspect {
             file,
@@ -204,7 +202,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             for i in crate::parser::inspect::<_, AccountId>(file, network, &pk)? {
                 writeln!(output, "{}", i)?;
             }
-            Ok(())
         }
     }
+    Ok(None)
 }

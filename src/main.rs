@@ -183,23 +183,21 @@ async fn main() -> Result<(), Error> {
     if dry_run {
         return Ok(())
     }
-    match cmd {
-        Command::Nominator(s) => nominator::main(s, client, address_format, keystore)
-            .await
-            .map(drop),
-        Command::Validator(v) => validator::main(v, client, address_format, keystore)
-            .await
-            .map(drop),
-        Command::Allowlist(l) => approved_validators::main(l, keystore, address_format).await,
+    if let Some(hash) = match cmd {
+        Command::Nominator(s) => nominator::main(s, client, address_format, keystore).await?,
+        Command::Validator(v) => validator::main(v, client, address_format, keystore).await?,
+        Command::Allowlist(l) => approved_validators::main(l, keystore, address_format).await?,
         Command::Metadata => {
             println!("{:#?}", client.await?.metadata());
-            Ok(())
+            None
         }
         Command::Properties => {
             println!("{:#?}", client.await?.properties());
-            Ok(())
+            None
         }
-    }?;
+    } {
+        println!("Transaction hash: {:?}", hash);
+    }
     Ok(())
 }
 

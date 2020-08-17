@@ -19,7 +19,8 @@
 use super::{parse_address, parse_reward_destination, AccountType, Error, LedgeracioPath, StructOpt};
 use crate::common::pad;
 use core::{future::Future, pin::Pin};
-use substrate_subxt::{sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat, Ss58Codec},
+use substrate_subxt::{sp_core::{crypto::{AccountId32 as AccountId, Ss58AddressFormat, Ss58Codec},
+                                H256},
                       staking::{BondedStore, LedgerStore, NominateCallExt, PayeeStore,
                                 RewardDestination, SetPayeeCallExt},
                       Client, KusamaRuntime};
@@ -137,7 +138,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
     client: Pin<Box<dyn Future<Output = Result<Client<KusamaRuntime>, Error>>>>,
     network: Ss58AddressFormat,
     keystore: T,
-) -> Result<(), Error> {
+) -> Result<Option<H256>, Error> {
     use std::convert::{TryFrom, TryInto};
     match cmd {
         Nominator::ShowAddress {
@@ -150,7 +151,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                 None => return Err("Controller not found for stash".to_owned().into()),
             };
             display_nominators(controller, &client, network).await?;
-            Ok(())
+            Ok(None)
         }
         Nominator::Show { index } => {
             let client = client.await?;
@@ -164,7 +165,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             for controller in nominators {
                 display_nominators(controller, &client, network).await?
             }
-            Ok(())
+            Ok(None)
         }
 
         Nominator::Claim { index } => unimplemented!("claiming payment for {:?}", index),
@@ -188,18 +189,16 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                 }
                 new_set.push(address)
             }
-            client.await?.nominate(&signer, new_set).await?;
-            Ok(())
+            Ok(Some(client.await?.nominate(&signer, new_set).await?))
         }
         Nominator::SetPayee { index, target } => {
             let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
             let signer = keystore()?.signer(path).await?;
-            client.await?.set_payee(&signer, target).await?;
-            Ok(())
+            Ok(Some(client.await?.set_payee(&signer, target).await?))
         }
         Nominator::Address { index } => {
             crate::display_path(AccountType::Nominator, &keystore()?, network, index).await?;
-            Ok(())
+            Ok(None)
         }
     }
 }
