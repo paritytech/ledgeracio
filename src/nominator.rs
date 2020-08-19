@@ -20,8 +20,7 @@ use super::{common::{get_stash, pad},
             parse_address, parse_reward_destination,
             payouts::display_payouts,
             AccountType, Error, LedgeracioPath, StructOpt};
-use core::{future::Future, pin::Pin};
-use futures::stream::{FuturesUnordered, StreamExt as _};
+use std::{future::Future, pin::Pin, sync::Arc};
 use substrate_subxt::{sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat, Ss58Codec},
                       staking::{BondedStore, NominateCallExt, NominatorsStore, PayeeStore,
                                 PayoutStakersCallExt, RewardDestination, SetPayeeCallExt,
@@ -164,7 +163,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
         }
 
         Nominator::Claim { index } => {
-            let client = client.await?;
+            let client = Arc::new(client.await?);
             let keystore = keystore()?;
             let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
             let signer = keystore.signer(path).await?;
@@ -177,26 +176,19 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                 }
                 Some(n) => n,
             };
-            let mut fut =
-                FuturesUnordered::<Pin<Box<dyn Future<Output = Result<(), Error>>>>>::new();
             for validator_stash in nominations.targets.iter().cloned() {
                 let (client, signer) = (client.clone(), signer.clone());
-                fut.push(Box::pin(async move {
-                    let validator_controller =
-                        crate::common::get_controller(&client, validator_stash.clone(), network)
-                            .await?;
-                    let eras =
-                        display_payouts(validator_controller.clone(), &client, network).await?;
-                    println!("Eras: {:?}", eras);
-                    for era in eras {
-                        client.payout_stakers(&signer, &validator_stash, era).await?;
-                    }
-                    Ok(())
-                }))
-            }
-            println!("Spawning futures");
-            while let Some(e) = fut.next().await {
-                e?
+
+                let validator_controller =
+                    crate::common::get_controller(&client, validator_stash.clone(), network)
+                        .await?;
+                let eras = display_payouts(validator_controller.clone(), &client, network).await?;
+                println!("Eras: {:?}", eras);
+                for era in eras {
+                    client
+                        .payout_stakers(&signer, &validator_stash, era)
+                        .await?;
+                }
             }
             Ok(())
         }
