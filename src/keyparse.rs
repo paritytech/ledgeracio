@@ -128,4 +128,40 @@ mod tests {
     fn rejects_wrong_network() {
         parse_secret(GOOD_KEY, Ss58AddressFormat::KusamaAccount).unwrap();
     }
+
+    #[test]
+    #[should_panic(expected = "Invalid public key")]
+    fn too_many_lines_rejected() {
+        parse_public(
+            b"Ledgeracio version 1 public key for network Kusama\n\
+                       Ix0qKdB7OQQIiBiTfwwVLiWVaKEb81Wnwo7fsfKf+v8=\n\n",
+        )
+        .unwrap();
+    }
+    #[test]
+    #[should_panic(expected = "Only version 1 keys are supported")]
+    fn wrong_version_rejected() {
+        parse_public(
+            b"Ledgeracio version 2 public key for network Kusama\n\
+                       Ix0qKdB7OQQIiBiTfwwVLiWVaKEb81Wnwo7fsfKf+v8=\n",
+        )
+        .unwrap();
+    }
+    #[test]
+    fn correct_key_accepted() {
+        parse_public(
+            b"Ledgeracio version 1 public key for network Kusama\n\
+                       Ix0qKdB7OQQIiBiTfwwVLiWVaKEb81Wnwo7fsfKf+v8=\n",
+        )
+        .unwrap();
+    }
+    #[test]
+    #[should_panic(expected = "Invalid public key")]
+    fn no_panic_wrong_base64() {
+        parse_public(
+            b"Ledgeracio version 1 public key for network Kusama\n\
+                       Ix0qKadB7OQQIiBiTfwwVLiWVaKEb81Wnwo7fsfKf+v8\n",
+        )
+        .unwrap();
+    }
 }
