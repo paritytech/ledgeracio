@@ -16,7 +16,7 @@
 
 //! Nominator commands
 
-use super::{common::{get_stash, pad},
+use super::{common::{get_controller, get_stash, pad},
             parse_address, parse_reward_destination,
             payouts::display_payouts,
             AccountType, Error, LedgeracioPath, StructOpt};
@@ -180,10 +180,8 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                 let (client, signer) = (client.clone(), signer.clone());
 
                 let validator_controller =
-                    crate::common::get_controller(&client, validator_stash.clone(), network)
-                        .await?;
+                    get_controller(&client, validator_stash.clone(), network).await?;
                 let eras = display_payouts(validator_controller.clone(), &client, network).await?;
-                println!("Eras: {:?}", eras);
                 for era in eras {
                     client
                         .payout_stakers(&signer, &validator_stash, era)
