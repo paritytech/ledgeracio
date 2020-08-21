@@ -43,10 +43,12 @@ pub(crate) fn parse_secret(secret: &[u8], network: Ss58AddressFormat) -> Result<
     if secret[23] != u8::from(network) {
         return Err(format!(
             "Expected a key for network {}, but got a key for network {}",
-            network,
-            secret[23]
-                .try_into()
-                .unwrap_or_else(|()| Ss58AddressFormat::Custom(secret[23]))
+            String::from(network),
+            String::from(
+                secret[23]
+                    .try_into()
+                    .unwrap_or_else(|()| Ss58AddressFormat::Custom(secret[23]))
+            )
         )
         .into())
     }
@@ -122,8 +124,7 @@ mod tests {
     fn accepts_good_key() { parse_secret(GOOD_KEY, Ss58AddressFormat::PolkadotAccount).unwrap(); }
     #[test]
     #[should_panic(
-        expected = "Expected a key for network KusamaAccount, but got a key for network \
-                    PolkadotAccount"
+        expected = "Expected a key for network kusama, but got a key for network polkadot"
     )]
     fn rejects_wrong_network() {
         parse_secret(GOOD_KEY, Ss58AddressFormat::KusamaAccount).unwrap();
