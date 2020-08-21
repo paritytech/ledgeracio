@@ -78,7 +78,7 @@ pub(crate) fn parse_public(unparsed: &[u8]) -> Result<(PublicKey, Ss58AddressFor
             .into())
     }
     let network = Ss58AddressFormat::try_from(&*network.to_ascii_lowercase())
-        .map_err(|()| format!("invalid network {}", network))?;
+        .map_err(|_| format!("invalid network {}", network))?;
     let mut pk = [0_u8; 32];
     assert_eq!(
         base64::decode_config_slice(&*data, base64::STANDARD, &mut pk)?,
