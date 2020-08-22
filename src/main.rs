@@ -54,6 +54,12 @@ use substrate_subxt::{sp_core,
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
+/// The version of keys supported
+const KEY_VERSION: u8 = 1;
+
+/// The magic number at the beginning of a secret key
+const KEY_MAGIC: &[u8] = &*b"Ledgeracio Secret Key";
+
 /// Output format
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum OutputFormat {
