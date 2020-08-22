@@ -54,7 +54,9 @@ pub fn parse<T: BufRead, U: Ss58Codec>(
         v.extend_from_slice(&[0_u8; 64]);
         v[current_len..current_len + bytes.len()].copy_from_slice(bytes);
     }
-    let total_len_bytes = u32::try_from((v.len() - 68) >> 6).unwrap().to_le_bytes();
+    let total_len_bytes = u32::try_from((v.len() - 68) >> 6)
+        .map_err(|_| Error::new(ErrorKind::Other, "Data too long".to_owned()))?
+        .to_le_bytes();
     v[4..8].copy_from_slice(&total_len_bytes);
     let digest = blake2b_simd::Params::new()
         .hash_length(32)
