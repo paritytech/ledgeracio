@@ -16,7 +16,7 @@
 
 //! Routines for parsing public and secret keys
 
-use super::{Error, KEY_VERSION, KEY_MAGIC};
+use super::{Error, KEY_MAGIC, KEY_VERSION};
 use ed25519_dalek::{ExpandedSecretKey, Keypair, PublicKey};
 use regex::bytes::Regex;
 use std::{convert::{TryFrom, TryInto},
