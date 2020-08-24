@@ -157,7 +157,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             file.set_extension("sec");
             write(
                 &[
-                    crate::keyparse::MAGIC,
+                    crate::KEY_MAGIC,
                     &1_u16.to_le_bytes(),
                     &[network.into()],
                     &secretkey[..],

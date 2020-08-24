@@ -37,6 +37,9 @@ use derivation::{AccountType, LedgeracioPath};
 use futures::future::TryFutureExt;
 use hardstore::HardStore;
 
+const KEY_VERSION: u8 = 1;
+const KEY_MAGIC: &[u8] = &*b"Ledgeracio Secret Key";
+
 #[cfg(not(unix))]
 compile_error!("Only *nix-like platforms are supported");
 

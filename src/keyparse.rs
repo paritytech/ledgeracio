@@ -16,27 +16,26 @@
 
 //! Routines for parsing public and secret keys
 
-use super::Error;
+use super::{Error, KEY_VERSION, KEY_MAGIC};
 use ed25519_dalek::{ExpandedSecretKey, Keypair, PublicKey};
 use regex::bytes::Regex;
 use std::{convert::{TryFrom, TryInto},
           str};
 use substrate_subxt::sp_core::crypto::Ss58AddressFormat;
 
-pub(crate) const MAGIC: &[u8] = &*b"Ledgeracio Secret Key";
 pub(crate) fn parse_secret(secret: &[u8], network: Ss58AddressFormat) -> Result<Keypair, Error> {
     if secret.len() != 88 {
         return Err(format!("Ledgeracio secret keys are 88 bytes, not {}", secret.len()).into())
     }
-    if &secret[..21] != MAGIC {
+    if &secret[..21] != KEY_MAGIC {
         return Err("Not a Ledgeracio secret key ― wrong magic number"
             .to_owned()
             .into())
     }
-    if secret[21..23] != [1_u8, 0][..] {
+    if secret[21..23] != [KEY_VERSION, 0][..] {
         return Err(format!(
-            "Expected a version 1 secret key, but got version {}",
-            u16::from_le_bytes(secret[21..23].try_into().unwrap())
+            "Expected a version {} secret key, but got version {}",
+            KEY_VERSION, u16::from_le_bytes(secret[21..23].try_into().unwrap())
         )
         .into())
     }
@@ -71,8 +70,8 @@ pub(crate) fn parse_public(unparsed: &[u8]) -> Result<(PublicKey, Ss58AddressFor
         str::from_utf8(&captures[2]).unwrap(),
         str::from_utf8(&captures[3]).unwrap(),
     );
-    if version != "1" {
-        return Err("Only version 1 keys are supported".to_owned().into())
+    if version.parse() != Ok(KEY_VERSION) {
+        return Err(format!("Only version {} keys are supported", KEY_VERSION).into())
     }
     if data.len() != 44 {
         return Err("base64-encoded ed25519 public keys are 44 bytes"
