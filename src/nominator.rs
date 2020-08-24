@@ -34,8 +34,6 @@ pub(crate) enum Nominator {
     },
     /// Show the specified stash controller, or all if none is specified.
     Show { index: Option<u32> },
-    /// Claim a validation payout
-    Claim { index: Option<u32> },
     /// Nominate a new validator set
     #[structopt(name = "nominate")]
     Nominate {
@@ -168,7 +166,6 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             Ok(None)
         }
 
-        Nominator::Claim { index } => unimplemented!("claiming payment for {:?}", index),
         Nominator::Nominate { index, set } => {
             let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
             let signer = keystore()?.signer(path).await?;

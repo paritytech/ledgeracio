@@ -36,7 +36,7 @@ pub(crate) enum Validator {
     },
     /// Show status of the given Validator Controller key, or all if none is
     /// specified.
-    Status { index: Option<u32> },
+    Show { index: Option<u32> },
     /// Announce intention to validate
     Announce { index: u32, commission: Option<u32> },
     /// Replace a session key
@@ -97,7 +97,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             let signer = keystore()?.signer(path).await?;
             Ok(Some(client.await?.set_keys(&signer, keys, vec![]).await?))
         }
-        Validator::Status { index } => {
+        Validator::Show { index } => {
             let client = client.await?;
             // These are *controller*, not *stash*, accounts.
             let validators = crate::common::fetch_validators(
