@@ -35,8 +35,8 @@ pub(crate) fn parse_secret(secret: &[u8], network: Ss58AddressFormat) -> Result<
     }
     if secret[21..23] != [KEY_VERSION, 0][..] {
         return Err(format!(
-            "Expected a version 1 secret key, but got version {}",
-            u16::from_le_bytes(secret[21..23].try_into().unwrap())
+            "Expected a version {} secret key, but got version {}",
+            KEY_VERSION, u16::from_le_bytes(secret[21..23].try_into().unwrap())
         )
         .into())
     }
@@ -74,8 +74,8 @@ pub(crate) fn parse_public(unparsed: &[u8]) -> Result<(PublicKey, Ss58AddressFor
         str::from_utf8(&captures[2]).unwrap(),
         str::from_utf8(&captures[3]).unwrap(),
     );
-    if version != "1" {
-        return Err("Only version 1 keys are supported".to_owned().into())
+    if version.parse() != Ok(KEY_VERSION) {
+        return Err(format!("Only version {} keys are supported", KEY_VERSION).into())
     }
     if data.len() != 44 {
         return Err("base64-encoded ed25519 public keys are 44 bytes"

@@ -18,7 +18,7 @@
 
 use super::{keyparse::{parse_public, parse_secret},
             parser::parse as parse_allowlist,
-            AccountId, Error, Ss58AddressFormat, StructOpt, KEY_MAGIC};
+            AccountId, Error, Ss58AddressFormat, StructOpt, KEY_MAGIC, KEY_VERSION};
 use ed25519_dalek::Keypair;
 use std::{fs::OpenOptions, io::Write, os::unix::fs::OpenOptionsExt, path::PathBuf};
 use substrate_subxt::sp_core::H256;
@@ -157,7 +157,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             write(
                 &[
                     KEY_MAGIC,
-                    &1_u16.to_le_bytes(),
+                    &u16::from(KEY_VERSION).to_le_bytes(),
                     &[network.into()],
                     &secretkey[..],
                     &publickey[..],
