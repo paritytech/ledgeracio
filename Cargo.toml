@@ -47,19 +47,19 @@ incremental = false
 opt-level = 3
 
 [patch.crates-io]
-frame-metadata = { git = "https://github.com/paritytech/substrate", package = "frame-metadata" }
-frame-support = { git = "https://github.com/paritytech/substrate", package = "frame-support" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", package = "sp-runtime" }
-sp-version = { git = "https://github.com/paritytech/substrate", package = "sp-version" }
-pallet-indices = { git = "https://github.com/paritytech/substrate", package = "pallet-indices" }
-sp-rpc = { git = "https://github.com/paritytech/substrate", package = "sp-rpc" }
-sp-core = { git = "https://github.com/paritytech/substrate", package = "sp-core" }
-sc-rpc-api = { git = "https://github.com/paritytech/substrate", package = "sc-rpc-api" }
-sp-transaction-pool = { git = "https://github.com/paritytech/substrate", package = "sp-transaction-pool" }
-sp-std = { git = "https://github.com/paritytech/substrate" }
-application-crypto = { git = "https://github.com/paritytech/substrate", package = "sp-application-crypto" }
-sp-finality-grandpa = { git = "https://github.com/paritytech/substrate" }
-sp-consensus-babe = { git = "https://github.com/paritytech/substrate" }
-pallet-im-online = { git = "https://github.com/paritytech/substrate" }
-sp-authority-discovery = { git = "https://github.com/paritytech/substrate" }
-pallet-staking = { git = "https://github.com/paritytech/substrate" }
+frame-metadata = { git = "https://github.com/paritytech/substrate.git" }
+frame-support = { git = "https://github.com/paritytech/substrate.git" }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git" }
+sp-version = { git = "https://github.com/paritytech/substrate.git" }
+pallet-indices = { git = "https://github.com/paritytech/substrate.git" }
+sp-rpc = { git = "https://github.com/paritytech/substrate.git" }
+sp-core = { git = "https://github.com/paritytech/substrate.git" }
+sc-rpc-api = { git = "https://github.com/paritytech/substrate.git" }
+sp-transaction-pool = { git = "https://github.com/paritytech/substrate.git" }
+sp-std = { git = "https://github.com/paritytech/substrate.git" }
+application-crypto = { git = "https://github.com/paritytech/substrate.git", package = "sp-application-crypto" }
+sp-finality-grandpa = { git = "https://github.com/paritytech/substrate.git" }
+sp-consensus-babe = { git = "https://github.com/paritytech/substrate.git" }
+pallet-im-online = { git = "https://github.com/paritytech/substrate.git" }
+sp-authority-discovery = { git = "https://github.com/paritytech/substrate.git" }
+pallet-staking = { git = "https://github.com/paritytech/substrate.git" }
