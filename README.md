@@ -13,6 +13,11 @@ This is less secure, however, as these apps do not enforce the same restrictions
 that the Ledgeracio app does.  Using a stock app in production is not
 recommended.
 
+The Polkadot app can be found [here](https://github.com/zondax/ledger-polkadot)
+and the Kusama app can be found [here](https://github.com/zondax/ledger-kusama).
+Other Substrate-based chains are currently not supported, but local devnets
+should work.
+
 Ledgeracio only support Unix-like systems, and has only been tested on Linux.
 That said, it should work on macOS and other Unix-like systems that provide the
 necessary support for userspace USB drivers.
