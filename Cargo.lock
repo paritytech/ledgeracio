@@ -3303,7 +3303,11 @@ dependencies = [
 [[package]]
 name = "sp-arithmetic"
 version = "2.0.0-rc6"
+<<<<<<< Updated upstream
 source = "git+https://github.com/paritytech/substrate#72102d25126732f55d8a106487ff071c9e58e8af"
+=======
+source = "git+https://github.com/paritytech/substrate#666555733c05a4c4df0445f567d7c921c10a83f3"
+>>>>>>> Stashed changes
 dependencies = [
  "integer-sqrt",
  "num-traits",
@@ -3507,7 +3511,11 @@ dependencies = [
 [[package]]
 name = "sp-debug-derive"
 version = "2.0.0-rc6"
+<<<<<<< Updated upstream
 source = "git+https://github.com/paritytech/substrate#72102d25126732f55d8a106487ff071c9e58e8af"
+=======
+source = "git+https://github.com/paritytech/substrate#666555733c05a4c4df0445f567d7c921c10a83f3"
+>>>>>>> Stashed changes
 dependencies = [
  "proc-macro2",
  "quote",

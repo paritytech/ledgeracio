@@ -5,7 +5,17 @@
 Ledgeracio is a command-line tool and Ledger app designed for staking operations
 on Substrate-based networks.
 
+<<<<<<< Updated upstream
 Running `ledgeracio --help` will provide top-level usage instructions.
+=======
+# TODO: document allowlist, metadata, properties, nominator
+# TODO: document valid values for --network (and default, Kusama)
+# TODO: document valid values for --host (and default)
+# TODO: `stash` is not a command
+- `ledgeracio stash`: Stash operations
+    - `ledgeracio stash nominate`: Nominate a new validator set.
+    - `ledgeracio stash set-payee`: Set the payment target for validation rewards.
+>>>>>>> Stashed changes
 
 Ledgeracio LEAF is intended to work with a special Ledgeracio Ledger app, but
 most of its commands will work with stock Kusama or Polkadot apps as well.
