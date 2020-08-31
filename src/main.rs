@@ -31,7 +31,6 @@ mod parser;
 mod payouts;
 mod validator;
 
-use clap::arg_enum;
 use codec::Encode;
 use derivation::{AccountType, LedgeracioPath};
 use futures::future::TryFutureExt;
@@ -45,7 +44,8 @@ compile_error!("Only *nix-like platforms are supported");
 
 use common::AddressSource;
 use sp_core::crypto::AccountId32 as AccountId;
-use std::{convert::{TryFrom, TryInto},
+use std::{cell::Cell,
+          convert::{TryFrom, TryInto},
           fmt::Debug,
           future::Future,
           pin::Pin};
@@ -91,21 +91,11 @@ struct Ledgeracio {
     #[structopt(short, long)]
     host: Option<String>,
     /// Network
-    #[structopt(long)]
-    network: Network,
+    #[structopt(long, parse(try_from_str = get_network))]
+    network: Ss58AddressFormat,
     /// Subcommand
     #[structopt(subcommand)]
     cmd: Command,
-}
-
-arg_enum! {
-    #[derive(Copy, Clone, Debug)]
-    enum Network {
-        // The Kusama (canary) network
-        Kusama,
-        // The Polkadot (live) network
-        Polkadot,
-    }
 }
 
 async fn display_path(
@@ -140,12 +130,15 @@ enum Command {
 
 type Runtime = substrate_subxt::KusamaRuntime;
 
-fn parse_reward_destination(arg: &str) -> Result<RewardDestination, &'static str> {
+fn parse_reward_destination(arg: &str) -> Result<RewardDestination<AccountId>, Error> {
     Ok(match &*arg.to_ascii_lowercase() {
         "staked" => RewardDestination::Staked,
         "stash" => RewardDestination::Stash,
         "controller" => RewardDestination::Controller,
-        _ => return Err("bad reward destination ― must be Staked, Stash, or Controller"),
+        _ => {
+            let (account, _network) = parse_address(arg)?;
+            RewardDestination::Account(account)
+        }
     })
 }
 
@@ -154,6 +147,10 @@ pub(crate) fn parse_address<T: Ss58Codec>(arg: &str) -> Result<(T, u8), String> 
     Ss58Codec::from_string_with_version(arg)
         .map_err(|e| format!("{:?}", e))
         .map(|(x, y)| (x, y.into()))
+}
+
+thread_local! {
+    static NETWORK: Cell<Ss58AddressFormat> = Cell::new(Ss58AddressFormat::SubstrateAccount);
 }
 
 #[async_std::main]
@@ -165,17 +162,13 @@ async fn main() -> Result<(), Error> {
         network,
         cmd,
     } = Ledgeracio::from_args();
-    let address_format = match network {
-        Network::Kusama => Ss58AddressFormat::KusamaAccount,
-        Network::Polkadot => Ss58AddressFormat::PolkadotAccount,
+    NETWORK.with(|e| e.set(network));
+    let host = match (host, network) {
+        (Some(host), _) => host,
+        (None, Ss58AddressFormat::KusamaAccount) => "wss://kusama-rpc.polkadot.io".into(),
+        (None, Ss58AddressFormat::PolkadotAccount) => "wss://rpc.polkadot.io".into(),
+        _ => return Err("Please supply an RPC endpoint".into()),
     };
-    let host = host.unwrap_or_else(|| {
-        match network {
-            Network::Kusama => "wss://kusama-rpc.polkadot.io",
-            Network::Polkadot => "wss://rpc.polkadot.io",
-        }
-        .to_owned()
-    });
 
     let client = ClientBuilder::<Runtime>::new()
         .set_url(host)
@@ -187,9 +180,9 @@ async fn main() -> Result<(), Error> {
         return Ok(())
     }
     if let Some(hash) = match cmd {
-        Command::Nominator(s) => nominator::main(s, client, address_format, keystore).await?,
-        Command::Validator(v) => validator::main(v, client, address_format, keystore).await?,
-        Command::Allowlist(l) => approved_validators::main(l, keystore, address_format).await?,
+        Command::Nominator(s) => nominator::main(s, client, network, keystore).await?,
+        Command::Validator(v) => validator::main(v, client, network, keystore).await?,
+        Command::Allowlist(l) => approved_validators::main(l, keystore, network).await?,
         Command::Metadata => {
             println!("{:#?}", client.await?.metadata());
             None
@@ -220,4 +213,10 @@ fn validate_network(
         )
         .into())
     }
+}
+
+fn get_network(address: &str) -> Result<Ss58AddressFormat, Error> {
+    let network = Ss58AddressFormat::try_from(address).map_err(|_| format!("Unknown network {}", address))?;
+    NETWORK.with(|c| c.set(network));
+    Ok(network)
 }

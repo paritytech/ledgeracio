@@ -24,7 +24,7 @@ use super::{Encode, Error, LedgeracioPath};
 use codec::Decode;
 use ledger_substrate::SubstrateApp;
 use std::{future::Future, pin::Pin, sync::Arc};
-use substrate_subxt::{sp_core::crypto::AccountId32 as AccountId,
+use substrate_subxt::{sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat},
                       sp_runtime::{generic::{SignedPayload, UncheckedExtrinsic},
                                    MultiSignature},
                       system::System,
@@ -54,13 +54,14 @@ pub type Signed<T> = Pin<
 >;
 
 impl HardStore {
-    pub(crate) fn new(network: super::Network) -> Result<Self, crate::Error> {
+    pub(crate) fn new(network: Ss58AddressFormat) -> Result<Self, crate::Error> {
         let transport = ledger_substrate::APDUTransport {
             transport_wrapper: ledger::TransportNativeHID::new()?,
         };
         let app = match network {
-            super::Network::Polkadot => ledger_substrate::new_polkadot_app,
-            super::Network::Kusama => ledger_substrate::new_kusama_app,
+            Ss58AddressFormat::PolkadotAccount => ledger_substrate::new_polkadot_app,
+            Ss58AddressFormat::KusamaAccount => ledger_substrate::new_kusama_app,
+            _ => return Err(format!("Unsupported network {}", network).into()),
         }(transport);
         Ok(Self {
             inner: Arc::new(app),

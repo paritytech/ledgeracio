@@ -11,14 +11,14 @@ allowlist = []
 default = ["allowlist"]
 
 [dependencies]
-substrate-subxt = { git = "https://github.com/paritytech/substrate-subxt", branch = "staking" }
-structopt = { version = "0.3.16" }
+substrate-subxt = { git = "https://github.com/DemiMarie/substrate-subxt.git", branch = "staking" }
+structopt = "0.3.17"
 codec = { package = "parity-scale-codec", version = "1.3.4" }
-frame-support = { version = "2.0.0-rc5" }
-async-std = { version = "1.6.2", features = ["attributes", "unstable"] }
+frame-support = "2.0.0-rc6"
+async-std = { version = "1.6.3", features = ["attributes", "unstable"] }
 ed25519-bip32 = "0.3.1"
 futures = "0.3.5"
-hmac = "0.8.1"
+hmac = "0.9.0"
 sha2 = "0.9.1"
 tiny-bip39 = "0.7.3"
 hex = "0.4.2"
@@ -29,15 +29,15 @@ zx-bip44 = { git = "https://github.com/Zondax/blockchain-tools-rs" }
 ledger-zondax-generic = { git = "https://github.com/Zondax/ledger-rs" }
 ledger-transport = { git = "https://github.com/Zondax/ledger-rs" }
 ledger-transport-hid = { git = "https://github.com/Zondax/ledger-rs" }
-clap = "2.33.2"
+clap = "2.33.3"
 log = "0.4.11"
 env_logger = "0.7.1"
-ed25519-dalek = "1.0.0-pre.4"
+ed25519-dalek = "1.0.0"
 rand = "0.7.3"
 blake2b_simd = "0.5.10"
 base64 = "0.12.3"
 regex = "1.3.9"
-sp-arithmetic = "2.0.0-rc5"
+sp-arithmetic = "2.0.0-rc6"
 
 [profile.release]
 lto = "fat"
@@ -57,13 +57,9 @@ sp-core = { git = "https://github.com/paritytech/substrate", package = "sp-core"
 sc-rpc-api = { git = "https://github.com/paritytech/substrate", package = "sc-rpc-api" }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate", package = "sp-transaction-pool" }
 sp-std = { git = "https://github.com/paritytech/substrate" }
-application-crypto = { git = "https://github.com/paritytech/substrate", package = "sp-application-crypto", default-features = false }
+application-crypto = { git = "https://github.com/paritytech/substrate", package = "sp-application-crypto" }
 sp-finality-grandpa = { git = "https://github.com/paritytech/substrate" }
 sp-consensus-babe = { git = "https://github.com/paritytech/substrate" }
 pallet-im-online = { git = "https://github.com/paritytech/substrate" }
 sp-authority-discovery = { git = "https://github.com/paritytech/substrate" }
 pallet-staking = { git = "https://github.com/paritytech/substrate" }
-# sc-service = { git = "https://github.com/paritytech/substrate" }
-# sc-cli = { git = "https://github.com/paritytech/substrate" }
-# sc-transaction-pool = { git = "https://github.com/paritytech/substrate" }
-# jsonrpsee = { git = "https://github.com/paritytech/jsonrpsee" }

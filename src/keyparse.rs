@@ -16,7 +16,7 @@
 
 //! Routines for parsing public and secret keys
 
-use super::{Error, KEY_VERSION, KEY_MAGIC};
+use super::{Error, KEY_MAGIC, KEY_VERSION};
 use ed25519_dalek::{ExpandedSecretKey, Keypair, PublicKey};
 use regex::bytes::Regex;
 use std::{convert::{TryFrom, TryInto},
@@ -35,7 +35,8 @@ pub(crate) fn parse_secret(secret: &[u8], network: Ss58AddressFormat) -> Result<
     if secret[21..23] != [KEY_VERSION, 0][..] {
         return Err(format!(
             "Expected a version {} secret key, but got version {}",
-            KEY_VERSION, u16::from_le_bytes(secret[21..23].try_into().unwrap())
+            KEY_VERSION,
+            u16::from_le_bytes(secret[21..23].try_into().unwrap())
         )
         .into())
     }
