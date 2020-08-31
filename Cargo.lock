@@ -3289,19 +3289,6 @@ dependencies = [
 [[package]]
 name = "sp-arithmetic"
 version = "2.0.0-rc6"
-source = "git+https://github.com/paritytech/substrate#72102d25126732f55d8a106487ff071c9e58e8af"
-dependencies = [
- "integer-sqrt",
- "num-traits",
- "parity-scale-codec",
- "serde",
- "sp-debug-derive 2.0.0-rc6 (git+https://github.com/paritytech/substrate)",
- "sp-std",
-]
-
-[[package]]
-name = "sp-arithmetic"
-version = "2.0.0-rc6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f861e78b2de65df52d855ff668a00890160ab66afa25e8203f4240152e89085"
 dependencies = [
@@ -3310,6 +3297,19 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "sp-debug-derive 2.0.0-rc6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-std",
+]
+
+[[package]]
+name = "sp-arithmetic"
+version = "2.0.0-rc6"
+source = "git+https://github.com/paritytech/substrate#72102d25126732f55d8a106487ff071c9e58e8af"
+dependencies = [
+ "integer-sqrt",
+ "num-traits",
+ "parity-scale-codec",
+ "serde",
+ "sp-debug-derive 2.0.0-rc6 (git+https://github.com/paritytech/substrate)",
  "sp-std",
 ]
 
@@ -3496,7 +3496,8 @@ dependencies = [
 [[package]]
 name = "sp-debug-derive"
 version = "2.0.0-rc6"
-source = "git+https://github.com/paritytech/substrate#72102d25126732f55d8a106487ff071c9e58e8af"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8fc56e04bc64020aa6c1a35fb74991ab8d2aa46ffc0b133145103d8b6304f195"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3506,8 +3507,7 @@ dependencies = [
 [[package]]
 name = "sp-debug-derive"
 version = "2.0.0-rc6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fc56e04bc64020aa6c1a35fb74991ab8d2aa46ffc0b133145103d8b6304f195"
+source = "git+https://github.com/paritytech/substrate#72102d25126732f55d8a106487ff071c9e58e8af"
 dependencies = [
  "proc-macro2",
  "quote",
