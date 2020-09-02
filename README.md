@@ -1,21 +1,11 @@
 # WARNING: This is alpha quality software and not suitable for production. It is incomplete and will have bugs.
-
+# TODO: What is "LEAF"?
 # Ledgeracio LEAF
 
 Ledgeracio is a command-line tool and Ledger app designed for staking operations
 on Substrate-based networks.
 
-<<<<<<< Updated upstream
 Running `ledgeracio --help` will provide top-level usage instructions.
-=======
-# TODO: document allowlist, metadata, properties, nominator
-# TODO: document valid values for --network (and default, Kusama)
-# TODO: document valid values for --host (and default)
-# TODO: `stash` is not a command
-- `ledgeracio stash`: Stash operations
-    - `ledgeracio stash nominate`: Nominate a new validator set.
-    - `ledgeracio stash set-payee`: Set the payment target for validation rewards.
->>>>>>> Stashed changes
 
 Ledgeracio LEAF is intended to work with a special Ledgeracio Ledger app, but
 most of its commands will work with stock Kusama or Polkadot apps as well.
@@ -39,7 +29,7 @@ necessary support for userspace USB drivers.
 ## Top-level commands
 
 ### Allowlist handling: `ledgeracio allowlist`
-
+# TODO: can't this be used for any account? I get this is mostly interesting to validators, but it isn't limited to validator stash accounts right?
 The Ledgeracio app enforces a list of allowed validator stash accounts.  This is
 managed using the `ledgeracio allowlist` command.
 
@@ -58,10 +48,10 @@ system administrator, and they cannot be written to except by the administrator.
 This is to prevent accidental overwrites.
 
 The public key is not sensitive, and will be needed by anyone who wishes to
-verify signed allowlists.  It will also be uploaded by
-`ledgeracio allowlist set-key`.  The secret key allows generating signatures,
-and therefore must be kept secret.  Ideally, it should never leave the machine
-it is generated on.
+verify signed allowlists.  It will also be uploaded to a Ledger device by
+`ledgeracio allowlist set-key`.
+The secret key allows generating signatures, and therefore must be kept secret.
+Ideally, it should never leave the machine it is generated on.
 
 #### Uploading an allowlist signing key to a device: `ledgeracio allowlist set-key`
 
@@ -70,7 +60,9 @@ extension).  The key will be parsed and uploaded to the Ledgeracio app running
 on the attached Ledger device.  If it is not able to do so, Ledgeracio will
 print an error message and exit with a non-zero status.
 
+# TODO: I don't understand this section. Uploading the *same* pubkey will fail? Or re-uploading *any* key after the first?
 If a key has already been uploaded, uploading a new key will fail.  The only
+# TODO: Is the Ledgeracio app different from the Ledger app mentioned at the beginning? We should provide a link to this app (and re-installation instructions)
 workaround is to reinstall the Ledgeracio app.  This *does not* forfeit any
 funds stored on the device.
 
@@ -91,7 +83,7 @@ This command takes the following arguments.  All of them are mandatory.
 - `--file <file>`: the textual allowlist file to sign.  See
   [FORMATS.md](FORMATS.md) for its format.
 - `--nonce <nonce>`: The nonce to sign the file with.  The nonce must be greater
-  than the previous nonce, or the Ledgeracio app will reject the allowlist.
+  than the previous nonce, or the Ledgeracio app will reject the allowlist. # TODO: is the current nonce stored on the device? Or how is it tracked? How does the user learn what the current nonce is?
 - `--output <output>`: The name of the output file to write.
 - `--secret <secret>`: The name of the secret key file.
 
@@ -105,7 +97,7 @@ This command takes two arguments.  Both of them are mandatory.
 
 #### Uploading an allowlist: `ledgeracio allowlist upload`
 
-This commands takes one argument: the filename of the signed binary allowlist to
+This command takes one argument: the filename of the signed binary allowlist to
 upload.  The command will fail if any of the following occurs:
 
 - There is no Ledger device connected.
@@ -124,11 +116,13 @@ The Ledgeracio app will refuse the operation if:
 
 This command takes no arguments.  It pretty-prints the chain metadata to stdout.
 It is primarily intended for debugging.
+TODO: this command requires an internet connection yes? Is it likely that users will use `ledgeracio` on an air-gapped device? Maybe we should mention any operation that requires an open network connection?
 
 ### Properties inspection: `ledgeracio properties`
 
 This command takes no arguments.  It pretty-prints the chain properties to
 stdout.  It is primarily intended for debugging.
+TODO: this command requires an internet connection yes? Is it likely that users will use `ledgeracio` on an air-gapped device? Maybe we should mention any operation that requires an open network connection?
 
 ### Nominator operations: `ledgeracio nominator`
 
@@ -137,13 +131,14 @@ nominator derivation path.  The following subcommands are available:
 
 #### Displaying the address at an index: `ledgeracio nominator address`
 
-This command takes an index as a parameter.  The address corresponding to that
+This command takes an index as a parameter.  The address on the device corresponding to that
 index is displayed on stdout.
 
 #### Showing a nominator controller: `ledgeracio nominator show`
 
 This command takes an index as parameter, and displays information about the
 corresponding nominator controller account.
+# TODO: do we need both `ledgeracio nominator address` and `ledgeracio nominator show`?
 
 #### Showing a nominator controller address: `ledgeracio nominator show-address`
 

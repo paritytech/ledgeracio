@@ -1,3 +1,9 @@
+# TODO: It looks like this file is also documenting all available options. I
+# think it's more maintainable if we list only the settings we are using and
+# leave out the rest, perhaps with a link to the documentation for further
+# options like the default `Cargo.toml` file does after running `cargo new`.
+
+
 # This template contains all of the possible sections and their default values
 
 # Note that all fields that take a lint level have these possible values:
@@ -58,7 +64,7 @@ ignore = [
 # * Medium - CVSS Score 4.0 - 6.9
 # * High - CVSS Score 7.0 - 8.9
 # * Critical - CVSS Score 9.0 - 10.0
-#severity-threshold = 
+#severity-threshold =
 
 # This section is considered when running `cargo deny check licenses`
 # More documentation for the licenses section can be found here:
@@ -67,9 +73,6 @@ ignore = [
 
 
 # The lint level for crates which do not have a detectable license
-
-# FIXME: change this to `deny` after crates in https://github.com/Zondax/ledger-rs/
-# get proper license metadata
 unlicensed = "deny"
 
 # List of explictly allowed licenses
@@ -175,8 +178,8 @@ deny = [
 skip = [
     #{ name = "ansi_term", version = "=0.11.0" },
 ]
-# Similarly to `skip` allows you to skip certain crates during duplicate 
-# detection. Unlike skip, it also includes the entire tree of transitive 
+# Similarly to `skip` allows you to skip certain crates during duplicate
+# detection. Unlike skip, it also includes the entire tree of transitive
 # dependencies starting at the specified crate, up to a certain depth, which is
 # by default infinite
 skip-tree = [

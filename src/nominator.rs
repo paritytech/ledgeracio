@@ -137,6 +137,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
     network: Ss58AddressFormat,
     keystore: T,
 ) -> Result<Option<H256>, Error> {
+    // TODO: put `use`-es on top?
     use std::convert::{TryFrom, TryInto};
     match cmd {
         Nominator::ShowAddress {

@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
-
+// TODO: module docs
 use super::{parse_address, parse_reward_destination, AccountType, AddressSource, Error,
             LedgeracioPath, StructOpt};
 use codec::Decode;

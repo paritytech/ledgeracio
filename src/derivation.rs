@@ -51,27 +51,35 @@ pub enum Error {
     /// Unsupported network (not Polkadot or Kusama)
     #[error("Unsupported network {0:?}")]
     UnsupportedNetwork(Ss58AddressFormat),
+    // FIXME: I'm a fan of errors that are as specific as possible. In this case
+    // the error seems to be raised in a single place and for a specific reason.
+    // Can you make the error message reflect that?
     /// Index out of range (greater than `1u32 << 31`)
     #[error("Index too large (greater than 2**31): {0}")]
     IndexTooLarge(u32),
 }
 
 /// The MSB of indexes for hardened derivation paths
+//FIXME: doesn't need to be `pub`?
 pub const HARDENED: u32 = 1 << 31;
 
 /// The [SLIP-0044] code for Polkadot
 ///
 /// [SLIP-O044]: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
+//FIXME: doesn't need to be `pub`?
 pub const POLKADOT: u32 = 0x8000_0162;
 
 /// The [SLIP-0044] code for Kusama
 ///
 /// [SLIP-O044]: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
+//FIXME: doesn't need to be `pub`?
 pub const KUSAMA: u32 = 0x8000_01b2;
 
 impl LedgeracioPath {
     /// Create a new Ledgeracio derivation path, or return an error if the path
     /// is not valid.
+    // TODO: is it correct that this creates a `LedgeracioPath` that can be used
+    // to derive **non-hardened** child keys? Worth mentioning in th
     pub fn new(
         network: Ss58AddressFormat,
         account_type: AccountType,
@@ -85,6 +93,10 @@ impl LedgeracioPath {
         if account_index > HARDENED {
             return Err(Error::IndexTooLarge(account_index))
         }
+        // TODO: I read [here](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki) that the path is composed like so:
+        // `m / purpose' / coin_type' / account' / change / address_index`. I'm a bit confused by the use of the `HARDENED` constant though.
+        // e.g. for the `change` field, it should be set to 0 for external chain, and 1 for internal chain (not meant to be visible outside of the wallet)
+        //
         Ok(Self(BIP44Path([
             HARDENED | 44,
             slip_0044_code,
@@ -107,6 +119,9 @@ impl AsRef<[u32]> for LedgeracioPath {
     fn as_ref(&self) -> &[u32] { &(self.0).0 }
 }
 
+// FIXME: use short path, already imported
 impl AsRef<zx_bip44::BIP44Path> for LedgeracioPath {
     fn as_ref(&self) -> &zx_bip44::BIP44Path { &self.0 }
 }
+
+// FIXME: it's not complex code but I think it's worth a few simple tests anyway

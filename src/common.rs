@@ -22,7 +22,7 @@ use substrate_subxt::{sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
                       Client, KusamaRuntime, Properties, Signer};
 
 pub(crate) async fn fetch_validators(
-    client: &Client<KusamaRuntime>,
+    client: &Client<KusamaRuntime>, // TODO: Why `KusamaRuntime`? Is it the same as `PolkadotRuntime` wrt key derivation?
     source: AddressSource<'_>,
     network: Ss58AddressFormat,
     account_type: AccountType,

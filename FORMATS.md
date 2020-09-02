@@ -1,3 +1,8 @@
+REVIEW: this is likely a minor point but I wonder if we're not re-inventing the
+wheel by defininig our own file formats. Why not use the
+[`signify`](https://www.openbsd.org/papers/bsdcan-signify.html) key file formats
+(also used by e.g. [`minisign`](https://jedisct1.github.io/minisign/))
+
 # Ledgeracio File Formats
 
 Ledgeracio uses several different formats for files.  There is a separate format

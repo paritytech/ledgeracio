@@ -48,15 +48,17 @@ use std::{convert::{TryFrom, TryInto},
           pin::Pin};
 use structopt::StructOpt;
 use substrate_subxt::{sp_core,
-                      sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
+                      sp_core::crypto::{Ss58AddressFormat, Ss58Codec}, // TODO: is it good to depend on substrate by way of subxt like this rather than using `sp-core` directly?
                       staking::RewardDestination,
                       Client, ClientBuilder, Signer};
 
+// TODO: this is an app; using `anyhow` would be perfectly fine imo
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
 /// The version of keys supported
 const KEY_VERSION: u8 = 1;
 
+// TODO: "…at the beginning of a file containing a secret key." yes?
 /// The magic number at the beginning of a secret key
 const KEY_MAGIC: &[u8] = &*b"Ledgeracio Secret Key";
 
@@ -186,6 +188,7 @@ async fn main() -> Result<(), Error> {
         .map_err(From::from);
     let client: Pin<Box<dyn Future<Output = Result<Client<Runtime>, _>>>> = Box::pin(client);
     let keystore = || hardstore::HardStore::new(network);
+    // TODO: so dry-run checks host and… not much else? Maybe it would be possible to run further than this?
     if dry_run {
         return Ok(())
     }

@@ -11,6 +11,7 @@ allowlist = []
 default = ["allowlist"]
 
 [dependencies]
+# TODO: get this into the mainline release
 substrate-subxt = { git = "https://github.com/paritytech/substrate-subxt", branch = "staking" }
 structopt = { version = "0.3.16" }
 codec = { package = "parity-scale-codec", version = "1.3.4" }
@@ -40,12 +41,15 @@ regex = "1.3.9"
 sp-arithmetic = "2.0.0-rc5"
 
 [profile.release]
-lto = "fat"
+lto = "fat" #TODO: why "fat" and not "thin"?
 codegen-units = 1
 panic = "abort"
 incremental = false
 opt-level = 3
 
+# TODO: remove patches or, if inevitable, open branch and pin specific revision?
+# TODO: If patches are necessary, consider adding a comment explaining why they
+# are needed and what needs to change for them to be removed.
 [patch.crates-io]
 frame-metadata = { git = "https://github.com/paritytech/substrate", package = "frame-metadata" }
 frame-support = { git = "https://github.com/paritytech/substrate", package = "frame-support" }
