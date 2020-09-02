@@ -44,8 +44,7 @@ compile_error!("Only *nix-like platforms are supported");
 
 use common::AddressSource;
 use sp_core::crypto::AccountId32 as AccountId;
-use std::{cell::Cell,
-          convert::{TryFrom, TryInto},
+use std::{convert::{TryFrom, TryInto},
           fmt::Debug,
           future::Future,
           pin::Pin};
@@ -135,10 +134,7 @@ fn parse_reward_destination(arg: &str) -> Result<RewardDestination<AccountId>, E
         "staked" => RewardDestination::Staked,
         "stash" => RewardDestination::Stash,
         "controller" => RewardDestination::Controller,
-        _ => {
-            let (account, _network) = parse_address(arg)?;
-            RewardDestination::Account(account)
-        }
+        _ => return Err("Arbitrary reward destinations not supported".to_owned().into()),
     })
 }
 
@@ -149,9 +145,6 @@ pub(crate) fn parse_address<T: Ss58Codec>(arg: &str) -> Result<(T, u8), String> 
         .map(|(x, y)| (x, y.into()))
 }
 
-thread_local! {
-    static NETWORK: Cell<Ss58AddressFormat> = Cell::new(Ss58AddressFormat::SubstrateAccount);
-}
 
 #[async_std::main]
 async fn main() -> Result<(), Error> {
@@ -162,7 +155,6 @@ async fn main() -> Result<(), Error> {
         network,
         cmd,
     } = Ledgeracio::from_args();
-    NETWORK.with(|e| e.set(network));
     let host = match (host, network) {
         (Some(host), _) => host,
         (None, Ss58AddressFormat::KusamaAccount) => "wss://kusama-rpc.polkadot.io".into(),
@@ -216,7 +208,5 @@ fn validate_network(
 }
 
 fn get_network(address: &str) -> Result<Ss58AddressFormat, Error> {
-    let network = Ss58AddressFormat::try_from(address).map_err(|_| format!("Unknown network {}", address))?;
-    NETWORK.with(|c| c.set(network));
-    Ok(network)
+    Ss58AddressFormat::try_from(address).map_err(|_| format!("Unknown network {}", address).into())
 }
