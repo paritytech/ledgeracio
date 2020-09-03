@@ -26,8 +26,8 @@ use substrate_subxt::{session::SetKeysCallExt,
                       sp_core::{crypto::{AccountId32 as AccountId, Ss58AddressFormat},
                                 H256},
                       sp_runtime::Perbill,
-                      staking::{BondedStore, RewardDestination, SetPayeeCallExt, ValidateCallExt,
-                                ValidatorPrefs},
+                      staking::{BondedStore, ChillCallExt, RewardDestination, SetPayeeCallExt,
+                                ValidateCallExt, ValidatorPrefs},
                       Client, KusamaRuntime, SessionKeys};
 
 #[derive(StructOpt, Debug)]
@@ -43,6 +43,8 @@ pub(crate) enum Validator {
     Show { index: Option<u32> },
     /// Announce intention to validate
     Announce { index: u32, commission: Option<u32> },
+    /// Chill (announce intention to cease validation)
+    Chill { index: u32 },
     /// Replace a session key
     ReplaceKey {
         index: u32,
@@ -95,6 +97,11 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             };
             let signer = keystore()?.signer(path).await?;
             Ok(Some(client.await?.validate(&signer, prefs).await?))
+        }
+        Validator::Chill { index } => {
+            let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
+            let signer = keystore()?.signer(path).await?;
+            Ok(Some(client.await?.chill(&signer).await?))
         }
         Validator::ReplaceKey { index, keys } => {
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;

@@ -21,8 +21,8 @@ use crate::common::pad;
 use core::{future::Future, pin::Pin};
 use substrate_subxt::{sp_core::{crypto::{AccountId32 as AccountId, Ss58AddressFormat, Ss58Codec},
                                 H256},
-                      staking::{BondedStore, LedgerStore, NominateCallExt, PayeeStore,
-                                RewardDestination, SetPayeeCallExt},
+                      staking::{BondedStore, ChillCallExt, LedgerStore, NominateCallExt,
+                                PayeeStore, RewardDestination, SetPayeeCallExt},
                       Client, KusamaRuntime};
 
 #[derive(StructOpt, Debug)]
@@ -41,6 +41,8 @@ pub(crate) enum Nominator {
         #[structopt(parse(try_from_str = parse_address))]
         set: Vec<(AccountId, u8)>,
     },
+    /// Chill (announce intention to cease nomination)
+    Chill { index: u32 },
     /// Set payment target
     #[structopt(name = "set-payee")]
     SetPayee {
@@ -187,6 +189,11 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                 new_set.push(address)
             }
             Ok(Some(client.await?.nominate(&signer, new_set).await?))
+        }
+        Nominator::Chill { index } => {
+            let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;
+            let signer = keystore()?.signer(path).await?;
+            Ok(Some(client.await?.chill(&signer).await?))
         }
         Nominator::SetPayee { index, target } => {
             let path = LedgeracioPath::new(network, AccountType::Nominator, index)?;

@@ -137,7 +137,11 @@ fn parse_reward_destination(arg: &str) -> Result<RewardDestination<AccountId>, E
         "staked" => RewardDestination::Staked,
         "stash" => RewardDestination::Stash,
         "controller" => RewardDestination::Controller,
-        _ => return Err("Arbitrary reward destinations not supported".to_owned().into()),
+        _ => {
+            return Err("Arbitrary reward destinations not supported"
+                .to_owned()
+                .into())
+        }
     })
 }
 
@@ -147,7 +151,6 @@ pub(crate) fn parse_address<T: Ss58Codec>(arg: &str) -> Result<(T, u8), String> 
         .map_err(|e| format!("{:?}", e))
         .map(|(x, y)| (x, y.into()))
 }
-
 
 #[async_std::main]
 async fn main() -> Result<(), Error> {
