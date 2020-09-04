@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Validator commands: implements operations on the validators whitelisted in
-//! the allowlist, e.g. rotating session keys, set payment target, announcing
+//! Validator commands: implements operations on the allowed validators,
+//! e.g. rotating session keys, set payment target, announcing
 //! intention to validate etc. Requires a network connection.
 
 use super::{parse_address, parse_reward_destination, AccountType, AddressSource, Error,
