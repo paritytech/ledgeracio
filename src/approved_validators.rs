@@ -21,7 +21,7 @@ use super::{keyparse::{parse_public, parse_secret},
             AccountId, Error, Ss58AddressFormat, StructOpt, KEY_MAGIC, KEY_VERSION};
 use ed25519_dalek::Keypair;
 use std::{fs::OpenOptions, io::Write, os::unix::fs::OpenOptionsExt, path::PathBuf};
-use substrate_subxt::sp_core::H256;
+use sp_core::H256;
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum ACL {

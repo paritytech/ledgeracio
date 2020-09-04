@@ -40,14 +40,13 @@ use hardstore::HardStore;
 compile_error!("Only *nix-like platforms are supported");
 
 use common::AddressSource;
-use sp_core::crypto::AccountId32 as AccountId;
 use std::{convert::{TryFrom, TryInto},
           fmt::Debug,
           future::Future,
           pin::Pin};
 use structopt::StructOpt;
-use substrate_subxt::{sp_core,
-                      sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
+use sp_core::{self, crypto::{AccountId32 as AccountId, Ss58AddressFormat, Ss58Codec}};
+use substrate_subxt::{
                       staking::RewardDestination,
                       Client, ClientBuilder, Signer};
 

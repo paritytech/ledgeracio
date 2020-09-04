@@ -19,7 +19,7 @@
 use ed25519_dalek::{ExpandedSecretKey, PublicKey};
 use std::{convert::TryFrom,
           io::{prelude::*, Error, ErrorKind}};
-use substrate_subxt::sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat, Ss58Codec};
+use sp_core::crypto::{AccountId32 as AccountId, Ss58AddressFormat, Ss58Codec};
 
 pub fn parse<T: BufRead, U: Ss58Codec>(
     reader: T,
@@ -146,7 +146,7 @@ mod tests {
    5GQvjFcJBCGTFeb2hvtQ9yRfbDNQajLJbW1yzgCra5uUTLvn
 5Cw8KtiVsBx4AK9SCzAMmXvprJiYuhRYwDUA4WHJ55ghYgYL
 5EhBPkiqA1rkoFZL6o87bSpgfTptHzp6nE3VkH4dRUed1Qdh
-5G3uDdTW8MeGW1QZR9FeZuN1exiVJZnUJ9ovyJexubiytNUj     
+5G3uDdTW8MeGW1QZR9FeZuN1exiVJZnUJ9ovyJexubiytNUj
 5FbtadyFPdDZMiLYjdEwAyFqavVwzYueEYX8Z6fsL4UrxTXx
 5ENTEF2sAtM89XxdwRxwSKDF7hxX9udy7zdr2G4i8bRdbBH9
 5EWgCx3UMqzYt9vSf7GCHd2jhRUYF7GqVNeyPjpXxGkLV7b4

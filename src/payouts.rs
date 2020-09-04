@@ -21,9 +21,9 @@ use futures::{future::join3,
               stream::{FuturesUnordered, StreamExt as _}};
 use log::trace;
 use std::marker::PhantomData;
-use substrate_subxt::{sp_core::crypto::AccountId32 as AccountId,
-                      sp_runtime::traits::Zero,
-                      staking::{CurrentEraStore, ErasRewardPointsStore, HistoryDepthStore,
+use sp_core::crypto::AccountId32 as AccountId;
+use sp_runtime::traits::Zero;
+use substrate_subxt::{staking::{CurrentEraStore, ErasRewardPointsStore, HistoryDepthStore,
                                 LedgerStore, StakingLedger},
                       Client, KusamaRuntime};
 

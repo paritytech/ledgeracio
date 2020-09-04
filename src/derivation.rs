@@ -16,7 +16,8 @@
 
 //! Polkadot and Kusama derivation paths
 
-use substrate_subxt::sp_core::crypto::Ss58AddressFormat;
+// use substrate_subxt::sp_core::crypto::Ss58AddressFormat;
+use sp_core::crypto::Ss58AddressFormat;
 use zx_bip44::BIP44Path;
 
 /// A derivation path that can be used with Ledgeracio

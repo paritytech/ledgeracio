@@ -17,8 +17,8 @@
 //! Utilities shared by both validator and nominator code
 
 use super::{AccountId, AccountType, Error, LedgeracioPath};
-use substrate_subxt::{sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
-                      system::AccountStoreExt,
+use sp_core::crypto::{Ss58AddressFormat, Ss58Codec};
+use substrate_subxt::{system::AccountStoreExt,
                       Client, KusamaRuntime, Properties, Signer};
 
 pub(crate) async fn fetch_validators(

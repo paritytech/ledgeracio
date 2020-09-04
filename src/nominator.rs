@@ -19,9 +19,8 @@
 use super::{parse_address, parse_reward_destination, AccountType, Error, LedgeracioPath, StructOpt};
 use crate::common::pad;
 use core::{future::Future, pin::Pin};
-use substrate_subxt::{sp_core::{crypto::{AccountId32 as AccountId, Ss58AddressFormat, Ss58Codec},
-                                H256},
-                      staking::{BondedStore, LedgerStore, NominateCallExt, PayeeStore,
+use sp_core::{crypto::{AccountId32 as AccountId, Ss58AddressFormat, Ss58Codec}, H256};
+use substrate_subxt::{staking::{BondedStore, LedgerStore, NominateCallExt, PayeeStore,
                                 RewardDestination, SetPayeeCallExt},
                       Client, KusamaRuntime};
 
