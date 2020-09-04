@@ -16,6 +16,8 @@
 
 //! Routines for handling approved validators
 
+use std::{fs, io::{BufReader, BufWriter}};
+
 use super::{keyparse::{parse_public, parse_secret},
             parser::parse as parse_allowlist,
             AccountId, Error, Ss58AddressFormat, StructOpt, KEY_MAGIC, KEY_VERSION};
@@ -24,7 +26,7 @@ use std::{fs::OpenOptions, io::Write, os::unix::fs::OpenOptionsExt, path::PathBu
 use substrate_subxt::sp_core::H256;
 
 #[derive(StructOpt, Debug)]
-pub(crate) enum ACL {
+pub(crate) enum AllowlistCommand {
     /// Upload a new approved validator list.  This list must be signed.
     Upload { path: PathBuf },
     /// Set the validator list signing key.  This will fail if a signing key has
@@ -103,19 +105,16 @@ fn write(buf: &[&[u8]], path: &std::path::Path) -> std::io::Result<()> {
 }
 
 pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
-    acl: ACL,
+    acl: AllowlistCommand,
     hardware: T,
     network: Ss58AddressFormat,
 ) -> Result<Option<H256>, Error> {
-    use std::{fs,
-              io::{BufReader, BufWriter}};
-
     match acl {
-        ACL::GetKey => {
+        AllowlistCommand::GetKey => {
             let s: [u8; 32] = hardware()?.get_pubkey().await?;
             println!("Public key is {}", base64::encode(s));
         }
-        ACL::SetKey { key } => {
+        AllowlistCommand::SetKey { key } => {
             let (key, key_network) = parse_public(&*fs::read(key)?)?;
             if key_network != network {
                 return Err(format!(
@@ -127,11 +126,11 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
             }
             hardware()?.set_pubkey(&key.as_bytes()).await?
         }
-        ACL::Upload { path } => {
+        AllowlistCommand::Upload { path } => {
             let allowlist = fs::read(path)?;
             hardware()?.allowlist_upload(&allowlist).await?
         }
-        ACL::GenKey { mut file } => {
+        AllowlistCommand::GenKey { mut file } => {
             if file.extension().is_some() {
                 return Err(format!(
                     "please provide a filename with no extension, not {}",
@@ -165,7 +164,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                 &file,
             )?;
         }
-        ACL::Sign {
+        AllowlistCommand::Sign {
             file,
             secret,
             output,
@@ -178,7 +177,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
                 parse_allowlist::<_, AccountId>(file, network, &public, &(&secret).into(), nonce)?;
             fs::write(output, signed)?;
         }
-        ACL::Inspect {
+        AllowlistCommand::Inspect {
             file,
             public,
             output,

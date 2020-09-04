@@ -18,6 +18,7 @@
 
 use super::{AccountId, AccountType, Error, LedgeracioPath};
 use substrate_subxt::{sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
+                      staking::{LedgerStore, StakingLedger, ValidatorsStore},
                       system::AccountStoreExt,
                       Client, KusamaRuntime, Properties, Signer};
 
@@ -59,7 +60,6 @@ pub(crate) async fn display_validators(
     nominations: &[AccountId],
     network: Ss58AddressFormat,
 ) -> Result<(), Error> {
-    use substrate_subxt::staking::{LedgerStore, StakingLedger, ValidatorsStore};
     for controller in nominations {
         let store = LedgerStore {
             controller: controller.clone(),

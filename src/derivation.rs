@@ -51,27 +51,27 @@ pub enum Error {
     /// Unsupported network (not Polkadot or Kusama)
     #[error("Unsupported network {0:?}")]
     UnsupportedNetwork(Ss58AddressFormat),
-    /// Index out of range (greater than `1u32 << 31`)
-    #[error("Index too large (greater than 2**31): {0}")]
-    IndexTooLarge(u32),
+    /// Index too large (greater than `2**31`)
+    #[error("Index too large: hardened child keys are not supported (greater than 2**31): {0}")]
+    UnsupportedKeyIndex(u32),
 }
 
 /// The MSB of indexes for hardened derivation paths
-pub const HARDENED: u32 = 1 << 31;
+const HARDENED: u32 = 1 << 31;
 
 /// The [SLIP-0044] code for Polkadot
 ///
 /// [SLIP-O044]: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-pub const POLKADOT: u32 = 0x8000_0162;
+const POLKADOT: u32 = 0x8000_0162;
 
 /// The [SLIP-0044] code for Kusama
 ///
 /// [SLIP-O044]: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-pub const KUSAMA: u32 = 0x8000_01b2;
+const KUSAMA: u32 = 0x8000_01b2;
 
 impl LedgeracioPath {
     /// Create a new Ledgeracio derivation path, or return an error if the path
-    /// is not valid.
+    /// is not valid or if using a [hardened](https://en.bitcoin.it/wiki/BIP_0032#Extended_keys) key index (> 2**31).
     pub fn new(
         network: Ss58AddressFormat,
         account_type: AccountType,
@@ -83,7 +83,7 @@ impl LedgeracioPath {
             bad_network => return Err(Error::UnsupportedNetwork(bad_network)),
         };
         if account_index > HARDENED {
-            return Err(Error::IndexTooLarge(account_index))
+            return Err(Error::UnsupportedKeyIndex(account_index))
         }
         Ok(Self(BIP44Path([
             HARDENED | 44,
@@ -107,6 +107,6 @@ impl AsRef<[u32]> for LedgeracioPath {
     fn as_ref(&self) -> &[u32] { &(self.0).0 }
 }
 
-impl AsRef<zx_bip44::BIP44Path> for LedgeracioPath {
-    fn as_ref(&self) -> &zx_bip44::BIP44Path { &self.0 }
+impl AsRef<BIP44Path> for LedgeracioPath {
+    fn as_ref(&self) -> &BIP44Path { &self.0 }
 }

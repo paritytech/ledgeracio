@@ -123,7 +123,7 @@ enum Command {
     /// Validator operations
     Validator(validator::Validator),
     /// Allowlist operations
-    Allowlist(approved_validators::ACL),
+    Allowlist(approved_validators::AllowlistCommand),
     /// Pretty-print the chain metadata
     Metadata,
     /// Display the chain properties
