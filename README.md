@@ -16,7 +16,7 @@ recommended.
 The Polkadot app can be found [here](https://github.com/zondax/ledger-polkadot)
 and the Kusama app can be found [here](https://github.com/zondax/ledger-kusama).
 Other Substrate-based chains are currently not supported, but local devnets
-should work as long as their RPC endpoints match Kusama/Polkadot's.
+should work as long as their RPC API matches Kusama/Polkadot's.
 
 Ledgeracio only support Unix-like systems, and has only tested mostly on Linux.
 That said, it works on macOS and other Unix-like systems that provide the
@@ -53,7 +53,7 @@ system administrator, and they cannot be written to except by the administrator.
 This is to prevent accidental overwrites.
 
 The public key is not sensitive, and is required by anyone who wishes to verify
-signed allowlists and operate on the whitelisted accounts.  It will be uploaded
+signed allowlists and operate on the allowed accounts.  It will be uploaded
 to the Ledger device by `ledgeracio allowlist set-key`.  The secret key allows
 generating signatures, and therefore must be kept secret.  It should never leave
 the (preferably air gapped) machine it is generated on.
@@ -119,17 +119,17 @@ The Ledgeracio app will refuse the operation if:
 ### Metadata inspection: `ledgeracio metadata`
 
 This command takes no arguments.  It pretty-prints the chain metadata to stdout.
-It is primarily intended for debugging. Requires a network connection.
+It is primarily intended for debugging.  Requires a network connection.
 
 ### Properties inspection: `ledgeracio properties`
 
 This command takes no arguments.  It pretty-prints the chain properties to
-stdout.  It is primarily intended for debugging. Requires a network connection.
+stdout.  It is primarily intended for debugging.  Requires a network connection.
 
 ### Nominator operations: `ledgeracio nominator`
 
 This command performs operations using nominator keys ― that is, keys on a
-nominator derivation path. Requires a network connection.  The following
+nominator derivation path.  Requires a network connection.  The following
 subcommands are available:
 
 #### Displaying the address at an index: `ledgeracio nominator address`
@@ -167,7 +167,7 @@ target must be one of `Stash`, `Staked`, or `Controller` (case-insensitive).
 
 ### Validator operations: `ledgeracio validator`
 
-This command handles validator operations. Requires a network connection.  It
+This command handles validator operations.  It requires a network connection, and
 has the following subcommands:
 
 #### Displaying a validator address: `ledgeracio validator address <index>`
