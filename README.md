@@ -160,6 +160,12 @@ intended ones.  A compromised host machine can send a set of accounts that is
 not the ones the user intended.  If any of the addresses sent to the device are
 not on the allowlist, the transaction will not be signed.
 
+#### Stopping nomination: `ledgeracio nominator chill`
+
+This command stops the account at the provided index from nominating.
+
+The user must confirm this action on the Ledger device.
+
 #### Setting a payment target: `ledgeracio nominator set-payee`
 
 This command takes an index as argument, and sets the payment target.  The
@@ -180,6 +186,12 @@ given index.
 This command announces that the controller account at `<index>` intends to
 validate.  An optional commission may also be provided.  If none is supplied, it
 defaults to 100%.
+
+#### Cease validation: `ledgeracio validator chill`
+
+This command stops validation.
+
+The user must confirm this action on the Ledger device.
 
 #### Setting the payment target: `ledgeracio validator set-payee`
 
