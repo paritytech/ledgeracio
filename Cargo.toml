@@ -49,6 +49,16 @@ opt-level = 3
 [patch.crates-io]
 # These patches are to ensure that the RPC call metadata matches what is
 # deployed on-chain.
+#
+# There is currently no guarantee that code deployed on-chain matches a
+# crates.io release.  Generally, it is better to use a revision that is too new
+# than one that is too old.  Therefore, I (Demi) chose to use git dependencies,
+# so that `cargo update` will always fetch the latest version.
+#
+# They can be removed when I no longer need to worry about arbitrary git commits
+# being deployed on-chain.  Ideally, Polkadot will always run the latest stable
+# release, but Kusama might run any version, so git dependencies might be needed
+# for quite a while.
 frame-metadata = { git = "https://github.com/paritytech/substrate.git" }
 frame-support = { git = "https://github.com/paritytech/substrate.git" }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git" }
