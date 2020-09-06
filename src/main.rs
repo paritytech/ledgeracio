@@ -152,8 +152,7 @@ pub(crate) fn parse_address<T: Ss58Codec>(arg: &str) -> Result<(T, u8), String> 
         .map(|(x, y)| (x, y.into()))
 }
 
-#[async_std::main]
-async fn main() -> Result<(), Error> {
+async fn inner_main() -> Result<(), Error> {
     env_logger::init();
     let Ledgeracio {
         dry_run,
@@ -193,6 +192,17 @@ async fn main() -> Result<(), Error> {
         println!("Transaction hash: {:?}", hash);
     }
     Ok(())
+}
+
+#[async_std::main]
+async fn main() {
+    match inner_main().await {
+        Ok(()) => (),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            std::process::exit(1)
+        }
+    }
 }
 
 fn validate_network(

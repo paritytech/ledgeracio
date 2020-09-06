@@ -3914,7 +3914,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt"
 version = "0.11.0"
-source = "git+https://github.com/DemiMarie/substrate-subxt.git?branch=staking#274412745b5619c3dfd4fe9ef699522aeca77b83"
+source = "git+https://github.com/DemiMarie/substrate-subxt.git?branch=staking#3efe16f2ff4ad7924b33b5982448313a55e6bc79"
 dependencies = [
  "frame-metadata",
  "frame-support",
@@ -3948,7 +3948,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt-proc-macro"
 version = "0.11.0"
-source = "git+https://github.com/DemiMarie/substrate-subxt.git?branch=staking#274412745b5619c3dfd4fe9ef699522aeca77b83"
+source = "git+https://github.com/DemiMarie/substrate-subxt.git?branch=staking#3efe16f2ff4ad7924b33b5982448313a55e6bc79"
 dependencies = [
  "heck",
  "proc-macro-crate",
