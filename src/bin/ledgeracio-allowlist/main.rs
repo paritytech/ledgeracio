@@ -14,16 +14,66 @@
 // You should have received a copy of the GNU General Public License
 // along with ledgeracio.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Routines for handling approved validators
+//! CLI for approved validator list handling
 
-use std::{fs, io::{BufReader, BufWriter}};
+#![deny(clippy::all)]
+#![forbid(unsafe_code)]
 
-use super::{keyparse::{parse_public, parse_secret},
-            parser::parse as parse_allowlist,
-            AccountId, Error, Ss58AddressFormat, StructOpt, KEY_MAGIC, KEY_VERSION};
+mod keyparse;
+mod parser;
+
+/// The version of keys supported
+pub const KEY_VERSION: u8 = 1;
+
+/// The magic number at the beginning of a secret key
+pub const KEY_MAGIC: &[u8] = &*b"Ledgeracio Secret Key";
+
+use ledgeracio::{get_network, Error, HardStore};
+use sp_core::crypto::AccountId32 as AccountId;
+use std::{fmt::Debug,
+          fs,
+          io::{BufReader, BufWriter}};
+use structopt::StructOpt;
+use substrate_subxt::{sp_core, sp_core::crypto::Ss58AddressFormat};
+
 use ed25519_dalek::Keypair;
+use keyparse::{parse_public, parse_secret};
+use parser::parse as parse_allowlist;
 use std::{fs::OpenOptions, io::Write, os::unix::fs::OpenOptionsExt, path::PathBuf};
 use substrate_subxt::sp_core::H256;
+
+async fn inner_main() -> Result<(), Error> {
+    env_logger::init();
+    let LedgeracioAllowlist { network, cmd } = LedgeracioAllowlist::from_args();
+
+    let keystore = || HardStore::new(network);
+    really_inner_main(cmd, keystore, network).await?;
+    Ok(())
+}
+
+fn main() {
+    match async_std::task::block_on(inner_main()) {
+        Ok(()) => (),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            std::process::exit(1)
+        }
+    }
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(
+    name = "ledgeracio-allowlist",
+    about = "Ledgeracio approved validator management CLI"
+)]
+struct LedgeracioAllowlist {
+    /// Network
+    #[structopt(long, parse(try_from_str = get_network))]
+    network: Ss58AddressFormat,
+    /// Subcommand
+    #[structopt(subcommand)]
+    cmd: AllowlistCommand,
+}
 
 #[derive(StructOpt, Debug)]
 pub(crate) enum AllowlistCommand {
@@ -104,7 +154,7 @@ fn write(buf: &[&[u8]], path: &std::path::Path) -> std::io::Result<()> {
     Ok(())
 }
 
-pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
+async fn really_inner_main<T: FnOnce() -> Result<ledgeracio::HardStore, Error>>(
     acl: AllowlistCommand,
     hardware: T,
     network: Ss58AddressFormat,

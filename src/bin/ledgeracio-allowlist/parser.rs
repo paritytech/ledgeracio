@@ -37,13 +37,13 @@ pub fn parse<T: BufRead, U: Ss58Codec>(
             continue
         }
         let (_address, address_type): (AccountId, _) =
-            crate::parse_address(trimmed).map_err(|i| {
+            ledgeracio::parse_address(trimmed).map_err(|i| {
                 Error::new(
                     ErrorKind::InvalidData,
                     format!("parse error on line {}: {}", l, i),
                 )
             })?;
-        crate::validate_network(trimmed, address_type, network).map_err(|i| {
+        ledgeracio::validate_network(trimmed, address_type, network).map_err(|i| {
             Error::new(
                 ErrorKind::InvalidData,
                 format!("invalid network on line {}: {}", l, i),
@@ -101,7 +101,7 @@ pub fn inspect<T: BufRead, U: Ss58Codec>(
                 format!("invalid UTF8 in address {}: {}", i, j),
             )
         })?;
-        let address_type = crate::parse_address::<AccountId>(trimmed)
+        let address_type = ledgeracio::parse_address::<AccountId>(trimmed)
             .map_err(|j| {
                 Error::new(
                     ErrorKind::InvalidData,
@@ -109,7 +109,7 @@ pub fn inspect<T: BufRead, U: Ss58Codec>(
                 )
             })?
             .1;
-        crate::validate_network(trimmed, address_type, network).map_err(|j| {
+        ledgeracio::validate_network(trimmed, address_type, network).map_err(|j| {
             Error::new(
                 ErrorKind::InvalidData,
                 format!("invalid network on line {}: {}", i, j),

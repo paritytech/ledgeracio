@@ -51,7 +51,7 @@ pub(crate) async fn fetch_validators(
     }
 }
 
-pub(crate) enum AddressSource<'a> {
+pub enum AddressSource<'a> {
     Device(Option<u32>, &'a crate::HardStore),
 }
 
@@ -94,7 +94,7 @@ pub(crate) async fn display_validators(
                     stash.to_ss58check_with_version(network),
                     pad(token_decimals, total),
                     pad(token_decimals, active),
-                    crate::payouts::display_payouts(controller.clone(), client).await?,
+                    super::payouts::display_payouts(controller.clone(), client).await?,
                     unlocking,
                     sym = token_symbol
                 );

@@ -18,10 +18,10 @@
 //! e.g. rotating session keys, set payment target, announcing
 //! intention to validate etc. Requires a network connection.
 
-use super::{parse_address, parse_reward_destination, AccountType, AddressSource, Error,
-            LedgeracioPath, StructOpt};
+use super::{parse_reward_destination, AccountType, AddressSource, Error, LedgeracioPath, StructOpt};
 use codec::Decode;
 use core::{future::Future, pin::Pin};
+use ledgeracio::parse_address;
 use substrate_subxt::{session::SetKeysCallExt,
                       sp_core::{crypto::{AccountId32 as AccountId, Ss58AddressFormat},
                                 H256},
@@ -81,7 +81,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
         Validator::ShowAddress {
             address: (stash, provided_network),
         } => {
-            super::validate_network("", provided_network, network)?;
+            ledgeracio::validate_network("", provided_network, network)?;
             let client = client.await?;
             let controller = match client.fetch(&BondedStore { stash }, None).await? {
                 Some(controller) => controller,

@@ -54,7 +54,7 @@ pub type Signed<T> = Pin<
 >;
 
 impl HardStore {
-    pub(crate) fn new(network: Ss58AddressFormat) -> Result<Self, crate::Error> {
+    pub fn new(network: Ss58AddressFormat) -> Result<Self, crate::Error> {
         let transport = ledger_substrate::APDUTransport {
             transport_wrapper: ledger::TransportNativeHID::new()?,
         };
@@ -154,7 +154,8 @@ impl HardSigner {
     }
 }
 
-type T = crate::Runtime;
+type T = substrate_subxt::KusamaRuntime;
+
 impl substrate_subxt::Signer<substrate_subxt::KusamaRuntime> for HardSigner {
     fn account_id(&self) -> &AccountId { &self.address }
 

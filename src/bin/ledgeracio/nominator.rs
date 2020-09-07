@@ -16,9 +16,10 @@
 
 //! Nominator commands
 
-use super::{parse_address, parse_reward_destination, AccountType, Error, LedgeracioPath, StructOpt};
+use super::{parse_reward_destination, AccountType, Error, LedgeracioPath, StructOpt};
 use crate::common::pad;
 use core::{future::Future, pin::Pin};
+use ledgeracio::{parse_address, validate_network};
 use substrate_subxt::{sp_core::{crypto::{AccountId32 as AccountId, Ss58AddressFormat, Ss58Codec},
                                 H256},
                       staking::{BondedStore, ChillCallExt, LedgerStore, NominateCallExt,
@@ -144,7 +145,7 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
         Nominator::ShowAddress {
             address: (stash, provided_network),
         } => {
-            super::validate_network("", provided_network, network)?;
+            validate_network("", provided_network, network)?;
             let client = client.await?;
             let controller = match client.fetch(&BondedStore { stash }, None).await? {
                 Some(controller) => controller,

@@ -16,10 +16,12 @@
 
 //! Routines for parsing public and secret keys
 
-use super::{Error, KEY_MAGIC, KEY_VERSION};
+use super::{KEY_MAGIC, KEY_VERSION};
 use ed25519_dalek::{ExpandedSecretKey, Keypair, PublicKey};
+use ledgeracio::Error;
 use regex::bytes::Regex;
-use std::{convert::{TryFrom, TryInto}, str};
+use std::{convert::{TryFrom, TryInto},
+          str};
 use substrate_subxt::sp_core::crypto::Ss58AddressFormat;
 
 /// Parse a Ledgeracio secret key file

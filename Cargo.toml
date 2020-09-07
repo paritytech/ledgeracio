@@ -5,11 +5,6 @@ authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2018"
 license = "GPLv3+"
 
-[features]
-insecure_software_keystore = []
-allowlist = []
-default = ["allowlist"]
-
 [dependencies]
 substrate-subxt = { git = "https://github.com/DemiMarie/substrate-subxt.git", branch = "staking" }
 structopt = "0.3.17"
@@ -75,3 +70,6 @@ sp-consensus-babe = { git = "https://github.com/paritytech/substrate.git" }
 pallet-im-online = { git = "https://github.com/paritytech/substrate.git" }
 sp-authority-discovery = { git = "https://github.com/paritytech/substrate.git" }
 pallet-staking = { git = "https://github.com/paritytech/substrate.git" }
+
+[[bin]]
+name = "ledgeracio-allowlist"

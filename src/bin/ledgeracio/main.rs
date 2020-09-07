@@ -17,73 +17,28 @@
 //! The main binary of Ledgeracio
 
 #![deny(clippy::all)]
-#![allow(clippy::non_ascii_literal)]
 #![forbid(unsafe_code)]
-#[cfg(feature = "allowlist")]
-mod approved_validators;
 mod common;
-mod derivation;
-mod hardstore;
-mod keyparse;
-mod mock;
 mod nominator;
-mod parser;
 mod payouts;
 mod validator;
 
-use codec::Encode;
-use derivation::{AccountType, LedgeracioPath};
 use futures::future::TryFutureExt;
-use hardstore::HardStore;
+use ledgeracio::{get_network, AccountType, Error, HardSigner, HardStore, LedgeracioPath};
 
 #[cfg(not(unix))]
 compile_error!("Only *nix-like platforms are supported");
 
 use common::AddressSource;
 use sp_core::crypto::AccountId32 as AccountId;
-use std::{convert::{TryFrom, TryInto},
-          fmt::Debug,
-          future::Future,
-          pin::Pin};
+use std::{fmt::Debug, future::Future, pin::Pin};
 use structopt::StructOpt;
 use substrate_subxt::{sp_core,
                       sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
                       staking::RewardDestination,
                       Client, ClientBuilder, Signer};
 
-type Error = Box<dyn std::error::Error + Send + Sync>;
-
-/// The version of keys supported
-const KEY_VERSION: u8 = 1;
-
-/// The magic number at the beginning of a secret key
-const KEY_MAGIC: &[u8] = &*b"Ledgeracio Secret Key";
-
-/// Output format
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum OutputFormat {
-    /// Human-readable formatted text
-    Text,
-    /// Machine-parsable JSON output
-    JSON,
-    /// Spreadsheet-importable CSV output
-    CSV,
-}
-
-impl std::str::FromStr for OutputFormat {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "JSON" => Ok(Self::JSON),
-            "CSV" => Ok(Self::CSV),
-            "Text" => Ok(Self::Text),
-            _ => Err(format!("invalid output format {:?}", s)),
-        }
-    }
-}
-
-#[derive(Debug, StructOpt)]
+#[derive(StructOpt, Debug)]
 #[structopt(name = "Ledgeracio", about = "Ledger CLI for staking")]
 struct Ledgeracio {
     /// Dry run.  Do not execute the operation.
@@ -110,7 +65,7 @@ async fn display_path(
         return Err("Index must not be zero".to_owned().into())
     }
     let path = LedgeracioPath::new(network, account_type, index)?;
-    let signer: hardstore::HardSigner = keystore.signer(path).await?;
+    let signer: HardSigner = keystore.signer(path).await?;
     let account_id: &AccountId = signer.account_id();
     println!("{}", account_id.to_ss58check_with_version(network));
     Ok(())
@@ -122,8 +77,6 @@ enum Command {
     Nominator(nominator::Nominator),
     /// Validator operations
     Validator(validator::Validator),
-    /// Allowlist operations
-    Allowlist(approved_validators::AllowlistCommand),
     /// Pretty-print the chain metadata
     Metadata,
     /// Display the chain properties
@@ -143,13 +96,6 @@ fn parse_reward_destination(arg: &str) -> Result<RewardDestination<AccountId>, E
                 .into())
         }
     })
-}
-
-/// Parse an SS58 address
-pub(crate) fn parse_address<T: Ss58Codec>(arg: &str) -> Result<(T, u8), String> {
-    Ss58Codec::from_string_with_version(arg)
-        .map_err(|e| format!("{:?}", e))
-        .map(|(x, y)| (x, y.into()))
 }
 
 async fn inner_main() -> Result<(), Error> {
@@ -172,14 +118,13 @@ async fn inner_main() -> Result<(), Error> {
         .build()
         .map_err(From::from);
     let client: Pin<Box<dyn Future<Output = Result<Client<Runtime>, _>>>> = Box::pin(client);
-    let keystore = || hardstore::HardStore::new(network);
+    let keystore = || HardStore::new(network);
     if dry_run {
         return Ok(())
     }
     if let Some(hash) = match cmd {
         Command::Nominator(s) => nominator::main(s, client, network, keystore).await?,
         Command::Validator(v) => validator::main(v, client, network, keystore).await?,
-        Command::Allowlist(l) => approved_validators::main(l, keystore, network).await?,
         Command::Metadata => {
             println!("{:#?}", client.await?.metadata());
             None
@@ -194,35 +139,12 @@ async fn inner_main() -> Result<(), Error> {
     Ok(())
 }
 
-#[async_std::main]
-async fn main() {
-    match inner_main().await {
+fn main() {
+    match async_std::task::block_on(inner_main()) {
         Ok(()) => (),
         Err(e) => {
             eprintln!("Error: {}", e);
             std::process::exit(1)
         }
     }
-}
-
-fn validate_network(
-    address: &str,
-    provided_network: u8,
-    network: Ss58AddressFormat,
-) -> Result<(), Error> {
-    if network == provided_network.try_into().unwrap() {
-        Ok(())
-    } else {
-        Err(format!(
-            "Network mismatch: address {} is for network {}, but you asked to use network {}",
-            address,
-            String::from(Ss58AddressFormat::try_from(provided_network).unwrap()),
-            String::from(network),
-        )
-        .into())
-    }
-}
-
-fn get_network(address: &str) -> Result<Ss58AddressFormat, Error> {
-    Ss58AddressFormat::try_from(address).map_err(|_| format!("Unknown network {}", address).into())
 }
