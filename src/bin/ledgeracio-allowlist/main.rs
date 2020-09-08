@@ -16,7 +16,8 @@
 
 //! CLI for approved validator list handling
 
-#![deny(clippy::all)]
+#![deny(clippy::all, clippy::pedantic)]
+#![allow(clippy::non_ascii_literal)]
 #![forbid(unsafe_code)]
 
 mod keyparse;

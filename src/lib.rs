@@ -17,7 +17,9 @@
 //! Ledgeracio utility library.  Do not depend on this.
 
 #![deny(clippy::all, clippy::pedantic)]
+#![allow(clippy::non_ascii_literal)]
 #![forbid(unsafe_code)]
+
 mod derivation;
 mod hardstore;
 

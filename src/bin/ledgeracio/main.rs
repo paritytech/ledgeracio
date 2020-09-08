@@ -16,8 +16,10 @@
 
 //! The main binary of Ledgeracio
 
-#![deny(clippy::all)]
+#![deny(clippy::all, clippy::pedantic)]
+#![allow(clippy::non_ascii_literal)]
 #![forbid(unsafe_code)]
+
 mod common;
 mod nominator;
 mod payouts;
