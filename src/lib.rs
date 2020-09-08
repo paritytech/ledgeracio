@@ -16,7 +16,7 @@
 
 //! Ledgeracio utility library.  Do not depend on this.
 
-#![deny(clippy::all)]
+#![deny(clippy::all, clippy::pedantic)]
 #![forbid(unsafe_code)]
 mod derivation;
 mod hardstore;
@@ -44,12 +44,22 @@ pub type Error = Box<dyn std::error::Error + Send + Sync>;
 // pub type Runtime = substrate_subxt::KusamaRuntime;
 
 /// Parse an SS58 address
+///
+/// # Errors
+///
+/// Fails if the address is malformed.
 pub fn parse_address<T: Ss58Codec>(arg: &str) -> Result<(T, u8), String> {
     Ss58Codec::from_string_with_version(arg)
         .map_err(|e| format!("{:?}", e))
         .map(|(x, y)| (x, y.into()))
 }
 
+/// Validate that the address `address`, which parsed to network `provided_network`, is valid for
+/// network `network`.
+///
+/// # Errors
+///
+/// Fails if the address was for the wrong network.
 pub fn validate_network(
     address: &str,
     provided_network: u8,
@@ -68,6 +78,11 @@ pub fn validate_network(
     }
 }
 
+/// Converts a network name into an address format.
+///
+/// # Errors
+///
+/// Fails if `Ss58AddressFormat::try_from` fails.
 pub fn get_network(address: &str) -> Result<Ss58AddressFormat, Error> {
     Ss58AddressFormat::try_from(address).map_err(|_| format!("Unknown network {}", address).into())
 }

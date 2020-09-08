@@ -54,6 +54,12 @@ pub type Signed<T> = Pin<
 >;
 
 impl HardStore {
+    /// Creates an instance of [`HardStore`].
+    ///
+    /// # Errors
+    ///
+    /// This will return `Err` if the network is unsupported or an I/O error
+    /// occurs.
     pub fn new(network: Ss58AddressFormat) -> Result<Self, crate::Error> {
         let transport = ledger_substrate::APDUTransport {
             transport_wrapper: ledger::TransportNativeHID::new()?,
@@ -77,6 +83,15 @@ pub struct HardSigner {
 }
 
 impl HardStore {
+    /// Open a handle to the Ledger app on the attached Ledger device.  Both the
+    /// general and Ledgeracio versions of the Kusama and Polkadot apps will
+    /// work.
+    ///
+    /// # Errors
+    ///
+    /// This function will fail if no Ledger is inserted, the Ledger is not open
+    /// to the correct app, or if there is an error communicating with the
+    /// Ledger device.
     pub async fn signer(&self, path: LedgeracioPath) -> Result<HardSigner, Error> {
         let app = self.inner.clone();
         let ledger_address = app.get_address(path.as_ref(), false).await;
@@ -97,6 +112,12 @@ impl HardStore {
         Ok(HardSigner { app, path, address })
     }
 
+    /// Set a public key
+    ///
+    /// # Errors
+    ///
+    /// This function will fail if the device refuses the operation, the app is
+    /// not the special Ledgeracio app, or an I/O error occurs.
     pub async fn set_pubkey(&self, key: &'_ [u8; 32]) -> Result<(), Error> {
         self.inner
             .allowlist_set_pubkey(key)
@@ -104,6 +125,12 @@ impl HardStore {
             .map_err(From::from)
     }
 
+    /// Set a public key
+    ///
+    /// # Errors
+    ///
+    /// This function will fail if the device refuses the operation, the app is
+    /// not the special Ledgeracio app, or an I/O error occurs.
     pub async fn allowlist_upload(&self, allowlist: &[u8]) -> Result<(), Error> {
         self.inner
             .allowlist_upload(allowlist)
@@ -111,12 +138,22 @@ impl HardStore {
             .map_err(From::from)
     }
 
+    /// Get the public key
+    ///
+    /// # Errors
+    ///
+    /// This function will fail if an I/O error occurs.
     pub async fn get_pubkey(&self) -> Result<[u8; 32], Error> {
         self.inner.allowlist_get_pubkey().await.map_err(From::from)
     }
 }
 
 impl HardSigner {
+    /// Sign a message using the Ledger device.
+    ///
+    /// # Errors
+    ///
+    /// This function will fail if the app refuses the operation or an I/O error occurs.
     pub async fn sign<T: Runtime<Signature = MultiSignature>>(
         &self,
         extrinsic: SignedPayload<Encoded, <<T as Runtime>::Extra as SignedExtra<T>>::Extra>,

@@ -72,6 +72,13 @@ const KUSAMA: u32 = 0x8000_01b2;
 impl LedgeracioPath {
     /// Create a new Ledgeracio derivation path, or return an error if the path
     /// is not valid or if using a [hardened](https://en.bitcoin.it/wiki/BIP_0032#Extended_keys) key index (> 2**31).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if:
+    ///
+    /// - The network is not supported.
+    /// - The account index is greater than 2**31.
     pub fn new(
         network: Ss58AddressFormat,
         account_type: AccountType,
