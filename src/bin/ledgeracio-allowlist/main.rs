@@ -192,15 +192,17 @@ async fn really_inner_main<T: FnOnce() -> Result<ledgeracio::HardStore, Error>>(
             let keypair = Keypair::generate(&mut rand::rngs::OsRng {});
             let secretkey = keypair.secret.to_bytes();
             let publickey = keypair.public.to_bytes();
+            let mut thevec = b"Edaaaaaaaa"[..].to_owned();
+            thevec.extend(publickey[..].iter());
             file.set_extension("pub");
             let public = format!(
-                "Ledgeracio version 1 public key for network {}\n{}\n",
+                "untrusted comment: Ledgeracio v2 network {} public key\n{}\n",
                 match network {
                     Ss58AddressFormat::KusamaAccount => "Kusama",
                     Ss58AddressFormat::PolkadotAccount => "Polkadot",
                     _ => unreachable!("should have been rejected earlier"),
                 },
-                base64::encode(&publickey[..])
+                base64::encode(&thevec[..])
             );
             write(&[public.as_bytes()], &file)?;
             file.set_extension("sec");

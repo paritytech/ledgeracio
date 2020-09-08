@@ -67,31 +67,30 @@ pub(crate) fn parse_secret(secret: &[u8], network: Ss58AddressFormat) -> Result<
 ///
 /// See FORMATS.md for the format of this key.
 pub(crate) fn parse_public(unparsed: &[u8]) -> Result<(PublicKey, Ss58AddressFormat), Error> {
-    let re = Regex::new(r"^Ledgeracio version ([1-9][0-9]*) public key for network ([[:alpha:]]+)\n([[:alnum:]/+]+=)\n$").unwrap();
+    let re = Regex::new(r"^untrusted comment: Ledgeracio v2 network ([[:alpha:]]+) public key\n([[:alnum:]/+]+)\n$").unwrap();
     let captures = re
         .captures(&unparsed)
         .ok_or_else(|| "Invalid public key".to_owned())?;
-    let (version, network, data) = (
+    let (network, data) = (
         str::from_utf8(&captures[1]).unwrap(),
         str::from_utf8(&captures[2]).unwrap(),
-        str::from_utf8(&captures[3]).unwrap(),
     );
-    if version.parse() != Ok(KEY_VERSION) {
-        return Err(format!("Only version {} keys are supported", KEY_VERSION).into())
-    }
-    if data.len() != 44 {
-        return Err("base64-encoded ed25519 public keys are 44 bytes"
+    if data.len() != 56 {
+        return Err("base64-encoded Signify-format ed25519 public keys are 56 bytes"
             .to_owned()
             .into())
     }
     let network = Ss58AddressFormat::try_from(&*network.to_ascii_lowercase())
         .map_err(|_| format!("invalid network {}", network))?;
-    let mut pk = [0_u8; 32];
+    let mut pk = [0_u8; 42];
     assert_eq!(
         base64::decode_config_slice(&*data, base64::STANDARD, &mut pk)?,
         pk.len()
     );
-    let pk = ed25519_dalek::PublicKey::from_bytes(&pk[..])?;
+    if &pk[..2] != &b"Ed"[..] {
+        return Err("bad magic number in base64".to_owned().into())
+    }
+    let pk = ed25519_dalek::PublicKey::from_bytes(&pk[10..])?;
     Ok((pk, network))
 }
 
@@ -145,19 +144,19 @@ mod tests {
         .unwrap();
     }
     #[test]
-    #[should_panic(expected = "Only version 1 keys are supported")]
+    #[should_panic(expected = "Invalid public key")]
     fn wrong_version_rejected() {
         parse_public(
-            b"Ledgeracio version 2 public key for network Kusama\n\
-                       Ix0qKdB7OQQIiBiTfwwVLiWVaKEb81Wnwo7fsfKf+v8=\n",
+            b"untrusted comment: Ledgeracio v2 network Kusama public key\n\
+               Ix0qKdB7OQQIiBiTfwwVLiWVaKEb81Wnwo7fsfKf+v8=\n",
         )
         .unwrap();
     }
     #[test]
     fn correct_key_accepted() {
         parse_public(
-            b"Ledgeracio version 1 public key for network Kusama\n\
-                       Ix0qKdB7OQQIiBiTfwwVLiWVaKEb81Wnwo7fsfKf+v8=\n",
+            b"untrusted comment: Ledgeracio v2 network Kusama public key\n\
+            RWRhYWFhYWFhYSMdKinQezkECIgYk38MFS4llWihG/NVp8KO37Hyn/r/\n"
         )
         .unwrap();
     }
@@ -165,8 +164,8 @@ mod tests {
     #[should_panic(expected = "Invalid public key")]
     fn no_panic_wrong_base64() {
         parse_public(
-            b"Ledgeracio version 1 public key for network Kusama\n\
-                       Ix0qKadB7OQQIiBiTfwwVLiWVaKEb81Wnwo7fsfKf+v8\n",
+            b"untrusted comment: Ledgeracio v1 network Kusama public key\n\
+            RWRhYWFhYWFhYSMdKinQezkECIgYk38MFS4llWihG/NVp8KO37Hyn/r/\n"
         )
         .unwrap();
     }
