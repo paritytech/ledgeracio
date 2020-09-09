@@ -87,7 +87,7 @@ pub(crate) fn parse_public(unparsed: &[u8]) -> Result<(PublicKey, Ss58AddressFor
         base64::decode_config_slice(&*data, base64::STANDARD, &mut pk)?,
         pk.len()
     );
-    if &pk[..2] != &b"Ed"[..] {
+    if pk[..2] != b"Ed"[..] {
         return Err("bad magic number in base64".to_owned().into())
     }
     let pk = ed25519_dalek::PublicKey::from_bytes(&pk[10..])?;
