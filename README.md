@@ -18,9 +18,25 @@ and the Kusama app can be found [here](https://github.com/zondax/ledger-kusama).
 Other Substrate-based chains are currently not supported, but local devnets
 should work as long as their RPC API matches Kusama/Polkadot's.
 
-Ledgeracio only support Unix-like systems, and has only tested mostly on Linux.
+Ledgeracio only support Unix-like systems, and has mostly been tested on Linux.
 That said, it works on macOS and other Unix-like systems that provide the
 necessary support for userspace USB drivers.
+
+## What is Ledgeracio?
+
+Ledgeracio is a CLI app to perform various tasks common to staking on Kusama and 
+Polkadot, aka staking-ops.  Ledgeracio is designed to reduce the risk of user
+error by way of an allowlist of validators that is set up and signed once and
+stored on the Ledger device. Furthermore, Ledgeracio can speed up the workflow
+considerably when compared to alternatives using Parity Signer + Polkadot{.js}.
+
+This repository only contains the CLI.  To submit transactions with Ledgeracio,
+you will also need the companion Ledger app.  Experimental versions are
+available at [Zondax/ledger-polkadot](https://github.com/Zondax/ledger-polkadot)
+and [Zondax/ledger-kusama](https://github.com/Zondax/ledger-kusama).  Please do
+not use these unaudited versions in production.  In the near future, Ledger will
+approve and sign production versions of these apps, which will be available in
+the Ledger Store.
 
 ## Conventions
 
