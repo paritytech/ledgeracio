@@ -24,12 +24,11 @@ necessary support for userspace USB drivers.
 
 ## What is Ledgeracio?
 
-Ledgeracio is intended for staking operations.  Previous approaches to staking
-operations required a large amount of error-prone and slow manual work using
-tools like Parity Signer and Polkadot{.js}.  Parity Signer requires scanning a
-QR code for each signature, and Polkadot{.js} can spend several minutes for each
-UI update.  Ledgeracio is a *fast* CLI tool that, together with the Ledgeracio
-Ledger app, can make staking operations far faster and easier.
+Ledgeracio is a CLI app to perform various tasks common to staking on Kusama and 
+Polkadot, aka staking-ops.  Ledgeracio is designed to reduce the risk of user
+error by way of an allowlist of validators that is set up and signed once and
+stored on the Ledger device. Furthermore, Ledgeracio can speed up the workflow
+considerably when compared to alternatives using Parity Signer + Polkadot{.js}.
 
 This repository only contains the CLI.  To submit transactions with Ledgeracio,
 you will also need the companion Ledger app.  Experimental versions are
