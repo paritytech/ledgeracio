@@ -20,7 +20,7 @@ use super::{AccountId, AccountType, Error, LedgeracioPath};
 use substrate_subxt::{sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
                       staking::{LedgerStore, StakingLedger, ValidatorsStore},
                       system::AccountStoreExt,
-                      Client, KusamaRuntime, Properties, Signer};
+                      Client, KusamaRuntime, SystemProperties, Signer};
 
 pub(crate) async fn fetch_validators(
     client: &Client<KusamaRuntime>,
@@ -76,7 +76,7 @@ pub(crate) async fn display_validators(
                 unlocking,
                 claimed_rewards: _,
             }) => {
-                let Properties {
+                let SystemProperties {
                     token_decimals,
                     mut token_symbol,
                     ..

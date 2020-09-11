@@ -6,7 +6,7 @@ edition = "2018"
 license = "GPLv3+"
 
 [dependencies]
-substrate-subxt = { git = "https://github.com/DemiMarie/substrate-subxt.git", branch = "staking" }
+substrate-subxt = { git = "https://github.com/paritytech/substrate-subxt.git", branch = "staking" }
 structopt = "0.3.17"
 codec = { package = "parity-scale-codec", version = "1.3.4" }
 frame-support = "2.0.0-rc6"
@@ -54,22 +54,22 @@ opt-level = 3
 # being deployed on-chain.  Ideally, Polkadot will always run the latest stable
 # release, but Kusama might run any version, so git dependencies might be needed
 # for quite a while.
-frame-metadata = { git = "https://github.com/paritytech/substrate.git" }
-frame-support = { git = "https://github.com/paritytech/substrate.git" }
-sp-runtime = { git = "https://github.com/paritytech/substrate.git" }
-sp-version = { git = "https://github.com/paritytech/substrate.git" }
-pallet-indices = { git = "https://github.com/paritytech/substrate.git" }
-sp-rpc = { git = "https://github.com/paritytech/substrate.git" }
-sp-core = { git = "https://github.com/paritytech/substrate.git" }
-sc-rpc-api = { git = "https://github.com/paritytech/substrate.git" }
-sp-transaction-pool = { git = "https://github.com/paritytech/substrate.git" }
-sp-std = { git = "https://github.com/paritytech/substrate.git" }
-application-crypto = { git = "https://github.com/paritytech/substrate.git", package = "sp-application-crypto" }
-sp-finality-grandpa = { git = "https://github.com/paritytech/substrate.git" }
-sp-consensus-babe = { git = "https://github.com/paritytech/substrate.git" }
-pallet-im-online = { git = "https://github.com/paritytech/substrate.git" }
-sp-authority-discovery = { git = "https://github.com/paritytech/substrate.git" }
-pallet-staking = { git = "https://github.com/paritytech/substrate.git" }
+# frame-metadata = { git = "https://github.com/paritytech/substrate.git" }
+# frame-support = { git = "https://github.com/paritytech/substrate.git" }
+# sp-runtime = { git = "https://github.com/paritytech/substrate.git" }
+# sp-version = { git = "https://github.com/paritytech/substrate.git" }
+# pallet-indices = { git = "https://github.com/paritytech/substrate.git" }
+# sp-rpc = { git = "https://github.com/paritytech/substrate.git" }
+# sp-core = { git = "https://github.com/paritytech/substrate.git" }
+# sc-rpc-api = { git = "https://github.com/paritytech/substrate.git" }
+# sp-transaction-pool = { git = "https://github.com/paritytech/substrate.git" }
+# sp-std = { git = "https://github.com/paritytech/substrate.git" }
+# application-crypto = { git = "https://github.com/paritytech/substrate.git", package = "sp-application-crypto" }
+# sp-finality-grandpa = { git = "https://github.com/paritytech/substrate.git" }
+# sp-consensus-babe = { git = "https://github.com/paritytech/substrate.git" }
+# pallet-im-online = { git = "https://github.com/paritytech/substrate.git" }
+# sp-authority-discovery = { git = "https://github.com/paritytech/substrate.git" }
+# pallet-staking = { git = "https://github.com/paritytech/substrate.git" }
 
 [[bin]]
 name = "ledgeracio-allowlist"
