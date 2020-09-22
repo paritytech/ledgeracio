@@ -48,7 +48,6 @@ pub type Signed<T> = Pin<
                     String,
                 >,
             > + Send
-            + Sync
             + 'static,
     >,
 >;
@@ -153,7 +152,8 @@ impl HardSigner {
     ///
     /// # Errors
     ///
-    /// This function will fail if the app refuses the operation or an I/O error occurs.
+    /// This function will fail if the app refuses the operation or an I/O error
+    /// occurs.
     pub async fn sign<T: Runtime<Signature = MultiSignature>>(
         &self,
         extrinsic: SignedPayload<Encoded, <<T as Runtime>::Extra as SignedExtra<T>>::Extra>,

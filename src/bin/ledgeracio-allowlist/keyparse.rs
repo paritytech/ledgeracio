@@ -67,7 +67,10 @@ pub(crate) fn parse_secret(secret: &[u8], network: Ss58AddressFormat) -> Result<
 ///
 /// See FORMATS.md for the format of this key.
 pub(crate) fn parse_public(unparsed: &[u8]) -> Result<(PublicKey, Ss58AddressFormat), Error> {
-    let re = Regex::new(r"^untrusted comment: Ledgeracio v2 network ([[:alpha:]]+) public key\n([[:alnum:]/+]+)\n$").unwrap();
+    let re = Regex::new(
+        r"^untrusted comment: Ledgeracio v2 network ([[:alpha:]]+) public key\n([[:alnum:]/+]+)\n$",
+    )
+    .unwrap();
     let captures = re
         .captures(&unparsed)
         .ok_or_else(|| "Invalid public key".to_owned())?;
@@ -76,9 +79,11 @@ pub(crate) fn parse_public(unparsed: &[u8]) -> Result<(PublicKey, Ss58AddressFor
         str::from_utf8(&captures[2]).unwrap(),
     );
     if data.len() != 56 {
-        return Err("base64-encoded Signify-format ed25519 public keys are 56 bytes"
-            .to_owned()
-            .into())
+        return Err(
+            "base64-encoded Signify-format ed25519 public keys are 56 bytes"
+                .to_owned()
+                .into(),
+        )
     }
     let network = Ss58AddressFormat::try_from(&*network.to_ascii_lowercase())
         .map_err(|_| format!("invalid network {}", network))?;
@@ -156,7 +161,7 @@ mod tests {
     fn correct_key_accepted() {
         parse_public(
             b"untrusted comment: Ledgeracio v2 network Kusama public key\n\
-            RWRhYWFhYWFhYSMdKinQezkECIgYk38MFS4llWihG/NVp8KO37Hyn/r/\n"
+            RWRhYWFhYWFhYSMdKinQezkECIgYk38MFS4llWihG/NVp8KO37Hyn/r/\n",
         )
         .unwrap();
     }
@@ -165,7 +170,7 @@ mod tests {
     fn no_panic_wrong_base64() {
         parse_public(
             b"untrusted comment: Ledgeracio v1 network Kusama public key\n\
-            RWRhYWFhYWFhYSMdKinQezkECIgYk38MFS4llWihG/NVp8KO37Hyn/r/\n"
+            RWRhYWFhYWFhYSMdKinQezkECIgYk38MFS4llWihG/NVp8KO37Hyn/r/\n",
         )
         .unwrap();
     }

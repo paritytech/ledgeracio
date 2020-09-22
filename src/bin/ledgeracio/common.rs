@@ -20,7 +20,7 @@ use super::{AccountId, AccountType, Error, LedgeracioPath};
 use substrate_subxt::{sp_core::crypto::{Ss58AddressFormat, Ss58Codec},
                       staking::{LedgerStore, StakingLedger, ValidatorsStore},
                       system::AccountStoreExt,
-                      Client, KusamaRuntime, SystemProperties, Signer};
+                      Client, KusamaRuntime, Signer, SystemProperties};
 
 pub(crate) async fn fetch_validators(
     client: &Client<KusamaRuntime>,

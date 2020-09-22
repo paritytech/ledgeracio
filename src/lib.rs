@@ -56,8 +56,8 @@ pub fn parse_address<T: Ss58Codec>(arg: &str) -> Result<(T, u8), String> {
         .map(|(x, y)| (x, y.into()))
 }
 
-/// Validate that the address `address`, which parsed to network `provided_network`, is valid for
-/// network `network`.
+/// Validate that the address `address`, which parsed to network
+/// `provided_network`, is valid for network `network`.
 ///
 /// # Errors
 ///
