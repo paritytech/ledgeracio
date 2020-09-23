@@ -56,7 +56,7 @@ pub(crate) enum Validator {
     SetPayee {
         index: u32,
         #[structopt(parse(try_from_str = parse_reward_destination))]
-        target: RewardDestination,
+        target: RewardDestination<AccountId>,
     },
     /// Display the address of the given index
     Address { index: u32 },

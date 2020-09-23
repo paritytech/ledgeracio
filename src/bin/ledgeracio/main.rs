@@ -87,7 +87,7 @@ enum Command {
 
 type Runtime = substrate_subxt::KusamaRuntime;
 
-fn parse_reward_destination(arg: &str) -> Result<RewardDestination, Error> {
+fn parse_reward_destination(arg: &str) -> Result<RewardDestination<AccountId>, Error> {
     Ok(match &*arg.to_ascii_lowercase() {
         "staked" => RewardDestination::Staked,
         "stash" => RewardDestination::Stash,
