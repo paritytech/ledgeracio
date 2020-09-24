@@ -92,8 +92,12 @@ pub(crate) async fn main<T: FnOnce() -> Result<super::HardStore, Error>>(
         }
         Validator::Announce { index, commission } => {
             let path = LedgeracioPath::new(network, AccountType::Validator, index)?;
+            let commission = commission.unwrap_or(1_000_000_000);
+            if commission > 1_000_000_000 {
+                return Err(format!("Commission {} too large (limit is 10⁹)", commission).into())
+            }
             let prefs = ValidatorPrefs {
-                commission: Perbill::from_parts(commission.unwrap_or(u32::max_value())),
+                commission: Perbill::from_parts(commission),
             };
             let signer = keystore()?.signer(path).await?;
             Ok(Some(client.await?.validate(&signer, prefs).await?))
