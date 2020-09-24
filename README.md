@@ -2,7 +2,7 @@
 
 # Ledgeracio CLI
 
-Ledgeracio is a command-line tool and Ledger app designed for staking operations
+Ledgeracio is a command-line tool and a Ledger app designed for staking operations
 on Substrate-based networks.
 
 Running `ledgeracio --help` will provide top-level usage instructions.
@@ -24,14 +24,14 @@ necessary support for userspace USB drivers.
 
 ## What is Ledgeracio?
 
-Ledgeracio is a CLI app to perform various tasks common to staking on Kusama and 
+Ledgeracio is a CLI app to perform various tasks common to staking on Kusama and
 Polkadot, aka staking-ops.  Ledgeracio is designed to reduce the risk of user
 error by way of an allowlist of validators that is set up and signed once and
 stored on the Ledger device. Furthermore, Ledgeracio can speed up the workflow
 considerably when compared to alternatives using Parity Signer + Polkadot{.js}.
 
 This repository only contains the CLI.  To submit transactions with Ledgeracio,
-you will also need the companion Ledger app.  Experimental versions are
+you will also need the companion Ledger app that you can install from the Ledger app store for [Polkadot](https://support.ledger.com/hc/en-us/articles/360016289919) and [Kusama](https://support.ledger.com/hc/en-us/articles/360016289979-Kusama-KSM-).  Development versions of the apps are
 available at [Zondax/ledger-polkadot](https://github.com/Zondax/ledger-polkadot)
 and [Zondax/ledger-kusama](https://github.com/Zondax/ledger-kusama).  Please do
 not use these unaudited versions in production.  In the near future, Ledger will
