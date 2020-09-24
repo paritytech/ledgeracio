@@ -31,12 +31,9 @@ stored on the Ledger device. Furthermore, Ledgeracio can speed up the workflow
 considerably when compared to alternatives using Parity Signer + Polkadot{.js}.
 
 This repository only contains the CLI.  To submit transactions with Ledgeracio,
-you will also need the companion Ledger app that you can install from the Ledger app store for [Polkadot](https://support.ledger.com/hc/en-us/articles/360016289919) and [Kusama](https://support.ledger.com/hc/en-us/articles/360016289979-Kusama-KSM-).  Development versions of the apps are
-available at [Zondax/ledger-polkadot](https://github.com/Zondax/ledger-polkadot)
+you will also need the companion Ledger app that you can install from the Ledger app store for [Polkadot](https://support.ledger.com/hc/en-us/articles/360016289919) and [Kusama](https://support.ledger.com/hc/en-us/articles/360016289979-Kusama-KSM-).  Development versions of the apps are available at [Zondax/ledger-polkadot](https://github.com/Zondax/ledger-polkadot)
 and [Zondax/ledger-kusama](https://github.com/Zondax/ledger-kusama).  Please do
-not use these unaudited versions in production.  In the near future, Ledger will
-approve and sign production versions of these apps, which will be available in
-the Ledger Store.
+not use the unaudited versions in production.  For instruction on how to setup and use your Ledger device with Polkadot/Kusama, see the [Polkadot wiki](https://wiki.polkadot.network/docs/en/learn-ledger).
 
 The Ledgeracio CLI contains two binaries.  The first, simply called
 `ledgeracio`, is used to submit transactions.  The second, called
@@ -48,11 +45,10 @@ can safely be used on virtually any machine on which it will run.
 Some subcommands of `ledgeracio-allowlist`, however, generate and use secret
 keys, which are stored unencrypted on disk.  Therefore, they MUST NOT be used
 except on trusted and secured machines.  Ideally, these subcommands should be
-run on a machine that is reserved for provisioning of Ledgeracio apps, and
-which has no network connectivity.
+run on a machine that is reserved for provisioning of Ledger devices with the Ledgeracio app, and which has no network connectivity.
 
 The allowlist serves to prevent one from accidentally nominating the wrong
-validator, which could result in a slash.  It does not protect against malicious
+validator, which could result in a slash.  It does NOT protect against malicious
 use of the device.  Anyone with both the device and its PIN can uninstall the
 Ledgeracio app and install the standard Polkadot or Kusama app, which uses the
 same derivation path and thus can perform the same transactions.
@@ -117,7 +113,7 @@ binary format.
 ### Device provisioning
 
 `ledgeracio-allowlist` is also used for device provisioning.  To set the
-allowlist, one uses `ledgeracio-allowlist set-key`.  This command will only
+allowlist, use `ledgeracio-allowlist set-key`.  This command will only
 succeed once.  If an allowlist has already been uploaded, it will fail.  The
 only way to change the allowlist signing key is to reinstall the Ledgeracio app,
 which does not result in any funds being lost.
@@ -151,7 +147,7 @@ status.  The first takes an index, while the second takes an address.
 ### Allowlist handling: `ledgeracio-allowlist`
 
 The Ledgeracio app enforces a list of allowed stash accounts.  This is
-managed using the `ledgeracio allowlist` command.
+managed using the `ledgeracio-allowlist` command.
 
 Some subcommands involve the generation or use of secret keys, which are stored
 on disk without encryption.  These subcommands MUST NOT be used on untrusted
@@ -169,7 +165,7 @@ This is to prevent accidental overwrites.
 
 The public key is not sensitive, and is required by anyone who wishes to verify
 signed allowlists and operate on the allowed accounts.  It will be uploaded
-to the Ledger device by `ledgeracio allowlist set-key`.  The secret key allows
+to the Ledger device by `ledgeracio-allowlist set-key`.  The secret key allows
 generating signatures, and therefore must be kept secret.  It should never leave
 the (preferably air gapped) machine it is generated on.
 
@@ -301,6 +297,7 @@ given index.
 This command announces that the controller account at `<index>` intends to
 validate.  An optional commission may also be provided.  If none is supplied, it
 defaults to 100%.
+FIXME: document the format of the comission. Is it "13" for 13% commission? Or "0.13"?
 
 #### Cease validation: `ledgeracio validator chill`
 
