@@ -144,21 +144,22 @@ pub fn pad(mut zeros: u8, value: u128) -> String {
 }
 
 pub fn parse_ppb(data: &str) -> Result<u32, Error> {
-    if data == "1" {
-        Ok(1_000_000_000)
-    } else if data == "0" {
-        Ok(0)
-    } else if !data.starts_with("0.") {
-        Err(
-            "Commission must start with 0. or be equal to 1 (the default) or 0"
-                .to_owned()
-                .into(),
-        )
-    } else if data.len() > 11 {
+    if data.len() > 11 {
         Err("Commission too long.  Check for excess trailing zeroes."
             .to_owned()
             .into())
-    } else {
+    } else if data == "1" {
+        Ok(1_000_000_000)
+    } else if data.starts_with("1.") {
+        for i in data[2..].bytes() {
+            if i != b'0' {
+                return Err("Commission cannot exceed 1".to_owned().into())
+            }
+        }
+        Ok(1_000_000_000)
+    } else if data == "0" {
+        Ok(0)
+    } else if data.starts_with("0.") {
         let mut len = data.len() - 2;
         let mut res: u32 = str::parse(&data[2..])?;
         while len < 9 {
@@ -166,6 +167,12 @@ pub fn parse_ppb(data: &str) -> Result<u32, Error> {
             len += 1;
         }
         Ok(res)
+    } else {
+        Err(
+            "Commission must start with 0. or be equal to 1 (the default) or 0"
+                .to_owned()
+                .into(),
+        )
     }
 }
 
@@ -184,6 +191,8 @@ mod tests {
 
     #[test]
     fn parse_ppb_works() {
+        assert_eq!(parse_ppb("1.000000000").unwrap(), 1_000_000_000);
+        assert!(parse_ppb("1.0000000000").is_err());
         assert_eq!(parse_ppb("1").unwrap(), 1_000_000_000);
         assert_eq!(parse_ppb("0").unwrap(), 0);
         assert!(parse_ppb("0.").is_err());
