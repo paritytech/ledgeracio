@@ -18,7 +18,8 @@
 //! e.g. rotating session keys, set payment target, announcing
 //! intention to validate etc. Requires a network connection.
 
-use super::{parse_reward_destination, AccountType, AddressSource, Error, LedgeracioPath, StructOpt};
+use super::{common::parse_ppb, parse_reward_destination, AccountType, AddressSource, Error,
+            LedgeracioPath, StructOpt};
 use codec::Decode;
 use core::{future::Future, pin::Pin};
 use ledgeracio::parse_address;
@@ -42,7 +43,11 @@ pub(crate) enum Validator {
     /// specified.
     Show { index: Option<u32> },
     /// Announce intention to validate
-    Announce { index: u32, commission: Option<u32> },
+    Announce {
+        index: u32,
+        #[structopt(parse(try_from_str = parse_ppb))]
+        commission: Option<u32>,
+    },
     /// Chill (announce intention to cease validation)
     Chill { index: u32 },
     /// Replace a session key

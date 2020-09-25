@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2018"
 license = "GPLv3+"
+default-run = "ledgeracio"
 
 [dependencies]
 substrate-subxt = { git = "https://github.com/paritytech/substrate-subxt.git", branch = "no-sync-required" }

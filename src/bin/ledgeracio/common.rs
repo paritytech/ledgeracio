@@ -143,9 +143,36 @@ pub fn pad(mut zeros: u8, value: u128) -> String {
     value
 }
 
+pub fn parse_ppb(data: &str) -> Result<u32, Error> {
+    if data == "1" {
+        Ok(1_000_000_000)
+    } else if data == "0" {
+        Ok(0)
+    } else if !data.starts_with("0.") {
+        Err(
+            "Commission must start with 0. or be equal to 1 (the default) or 0"
+                .to_owned()
+                .into(),
+        )
+    } else if data.len() > 11 {
+        Err("Commission too long.  Check for excess trailing zeroes."
+            .to_owned()
+            .into())
+    } else {
+        let mut len = data.len() - 2;
+        let mut res: u32 = str::parse(&data[2..])?;
+        while len < 9 {
+            res *= 10;
+            len += 1;
+        }
+        Ok(res)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn padding_works() {
         assert_eq!(pad(0, 100), "100".to_owned());
@@ -153,5 +180,17 @@ mod tests {
         assert_eq!(pad(3, 10000), "10".to_owned());
         assert_eq!(pad(3, 10001), "10.001".to_owned());
         assert_eq!(pad(3, 10010), "10.01".to_owned());
+    }
+
+    #[test]
+    fn parse_ppb_works() {
+        assert_eq!(parse_ppb("1").unwrap(), 1_000_000_000);
+        assert_eq!(parse_ppb("0").unwrap(), 0);
+        assert!(parse_ppb("0.").is_err());
+        assert_eq!(parse_ppb("0.01").unwrap(), 10_000_000);
+        assert!(parse_ppb("0.0100000000").is_err());
+        assert_eq!(parse_ppb("0.010000000").unwrap(), 10_000_000);
+        assert_eq!(parse_ppb("0.000000000").unwrap(), 0);
+        assert_eq!(parse_ppb("0.999999999").unwrap(), 999_999_999);
     }
 }

@@ -295,8 +295,8 @@ given index.
 #### Announcing an intention to validate: `ledgeracio validator announce <index> [commission]`
 
 This command announces that the controller account at `<index>` intends to
-validate.  An optional commission (in parts per billion) may also be provided.  If none is supplied, it
-defaults to 10⁹ parts per billion, or 100%.
+validate.  An optional commission (as a decimal between 0 and 1 inclusive) may also be provided.  If none is supplied, it
+defaults to 1, or 100%.
 
 #### Cease validation: `ledgeracio validator chill`
 
