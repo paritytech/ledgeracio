@@ -22,7 +22,7 @@ jobs:
           toolchain: stable
           override: true
       - name: Install development packages necessary for the build
-        run: sudo apt-get install libudev-dev
+        run: sudo apt-get install libudev-dev protobuf-compiler
       - name: Install clippy
         run: rustup component add clippy
       - uses: actions-rs/cargo@v1
