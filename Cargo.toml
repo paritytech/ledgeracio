@@ -7,7 +7,7 @@ license = "GPLv3+"
 default-run = "ledgeracio"
 
 [dependencies]
-substrate-subxt = { git = "https://github.com/paritytech/substrate-subxt.git" }
+substrate-subxt = { git = "https://github.com/DemiMarie/substrate-subxt.git", rev = "70bc8499ac5023fdcd4fa391d7db7481b3698600" }
 structopt = "0.3.17"
 codec = { package = "parity-scale-codec", version = "1.3.4" }
 frame-support = "2.0.0-rc6"

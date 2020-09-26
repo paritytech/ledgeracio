@@ -936,6 +936,18 @@ dependencies = [
 
 [[package]]
 name = "frame-metadata"
+version = "11.0.0-rc6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69b82bf25442501c9455fc60090d606e5a36cc6e6953a7afee87fcab4fe2865b"
+dependencies = [
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-std",
+]
+
+[[package]]
+name = "frame-metadata"
 version = "12.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6b5640bfcb7111643807c63cd38ecdcc923d3253e525f23ab6b366002bf8ecd5"
@@ -953,7 +965,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "807c32da14bd0e5fb751095335a07938cda6f1488f57d7b0539118e3434980a8"
 dependencies = [
  "bitmask",
- "frame-metadata",
+ "frame-metadata 12.0.0",
  "frame-support-procedural",
  "impl-trait-for-tuples",
  "log",
@@ -4370,9 +4382,9 @@ dependencies = [
 [[package]]
 name = "substrate-subxt"
 version = "0.12.0"
-source = "git+https://github.com/paritytech/substrate-subxt.git#cd7bb6041b53ab6e33058af21d4f6b20f974aa4f"
+source = "git+https://github.com/DemiMarie/substrate-subxt.git?rev=70bc8499ac5023fdcd4fa391d7db7481b3698600#70bc8499ac5023fdcd4fa391d7db7481b3698600"
 dependencies = [
- "frame-metadata",
+ "frame-metadata 11.0.0-rc6",
  "frame-support",
  "futures 0.3.5",
  "hex",
@@ -4404,7 +4416,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt-proc-macro"
 version = "0.12.0"
-source = "git+https://github.com/paritytech/substrate-subxt.git#cd7bb6041b53ab6e33058af21d4f6b20f974aa4f"
+source = "git+https://github.com/DemiMarie/substrate-subxt.git?rev=70bc8499ac5023fdcd4fa391d7db7481b3698600#70bc8499ac5023fdcd4fa391d7db7481b3698600"
 dependencies = [
  "heck",
  "proc-macro-crate",
